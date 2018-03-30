@@ -16,6 +16,7 @@
 package org.springframework.samples.petclinic.owner;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -29,6 +30,7 @@ import org.springframework.web.servlet.ModelAndView;
 import javax.validation.Valid;
 import java.util.Collection;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * @author Juergen Hoeller
@@ -129,7 +131,22 @@ class OwnerController {
     public ModelAndView showOwner(@PathVariable("ownerId") int ownerId) {
         ModelAndView mav = new ModelAndView("owners/ownerDetails");
         mav.addObject(this.owners.findById(ownerId));
+        try{
+            CompletableFuture<String> getAsync = getAsync("This sucks");
+            mav.addObject(getAsync.get());
+        }catch(Exception e){
+
+        }
         return mav;
     }
 
+    /**
+     *  T E S T I N G   A S Y N C   J A V A
+     */
+
+    @Async
+    public CompletableFuture<String> getAsync(String value) throws InterruptedException{
+        Thread.sleep(2000L);
+        return CompletableFuture.completedFuture(value);
+    }
 }

@@ -129,14 +129,16 @@ class OwnerController {
      */
     @GetMapping("/owners/{ownerId}")
     public ModelAndView showOwner(@PathVariable("ownerId") int ownerId) {
+
         ModelAndView mav = new ModelAndView("owners/ownerDetails");
         mav.addObject(this.owners.findById(ownerId));
-        try{
-            CompletableFuture<String> getAsync = getAsync("This sucks");
-            mav.addObject(getAsync.get());
-        }catch(Exception e){
 
-        }
+        CompletableFuture.supplyAsync(this::getAsync)
+        .thenAccept((String value) -> {
+            System.out.println("############################");
+            System.out.println("went looking for " + ownerId);
+        });
+
         return mav;
     }
 
@@ -144,9 +146,13 @@ class OwnerController {
      *  T E S T I N G   A S Y N C   J A V A
      */
 
-    @Async
-    public CompletableFuture<String> getAsync(String value) throws InterruptedException{
-        Thread.sleep(2000L);
-        return CompletableFuture.completedFuture(value);
+
+    public String getAsync(){
+        try{
+            Thread.sleep(2000L);
+        }catch(InterruptedException e){
+
+        }
+        return "This sucks";
     }
 }

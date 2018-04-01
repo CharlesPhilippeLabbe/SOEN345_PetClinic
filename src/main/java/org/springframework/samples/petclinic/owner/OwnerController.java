@@ -45,7 +45,7 @@ class OwnerController {
 
 
     @Autowired
-    public OwnerController(OwnerRepository clinicService) {
+    public OwnerController(OwnerRepository clinicService, NewOwnerRepository newClinicService) {
         this.owners = clinicService;
     }
 

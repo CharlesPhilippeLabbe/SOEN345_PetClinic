@@ -8,20 +8,20 @@ GRANT ALL PRIVILEGES ON petclinic.* TO pc@localhost IDENTIFIED BY 'pc';
 
 USE petclinic;
 
-CREATE TABLE IF NOT EXISTS vets (
+CREATE TABLE IF NOT EXISTS new_vets (
   id INT(4) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
   first_name VARCHAR(30),
   last_name VARCHAR(30),
   INDEX(last_name)
 ) engine=InnoDB;
 
-CREATE TABLE IF NOT EXISTS specialties (
+CREATE TABLE IF NOT EXISTS new_specialties (
   id INT(4) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(80),
   INDEX(name)
 ) engine=InnoDB;
 
-CREATE TABLE IF NOT EXISTS vet_specialties (
+CREATE TABLE IF NOT EXISTS new_vet_specialties (
   vet_id INT(4) UNSIGNED NOT NULL,
   specialty_id INT(4) UNSIGNED NOT NULL,
   FOREIGN KEY (vet_id) REFERENCES vets(id),
@@ -29,13 +29,13 @@ CREATE TABLE IF NOT EXISTS vet_specialties (
   UNIQUE (vet_id,specialty_id)
 ) engine=InnoDB;
 
-CREATE TABLE IF NOT EXISTS types (
+CREATE TABLE IF NOT EXISTS new_types (
   id INT(4) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(80),
   INDEX(name)
 ) engine=InnoDB;
 
-CREATE TABLE IF NOT EXISTS owners (
+CREATE TABLE IF NOT EXISTS new_owners (
   id INT(4) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
   first_name VARCHAR(30),
   last_name VARCHAR(30),
@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS owners (
   INDEX(last_name)
 ) engine=InnoDB;
 
-CREATE TABLE IF NOT EXISTS pets (
+CREATE TABLE IF NOT EXISTS new_pets (
   id INT(4) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(30),
   birth_date DATE,
@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS pets (
   FOREIGN KEY (type_id) REFERENCES types(id)
 ) engine=InnoDB;
 
-CREATE TABLE IF NOT EXISTS visits (
+CREATE TABLE IF NOT EXISTS new_visits (
   id INT(4) UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
   pet_id INT(4) UNSIGNED NOT NULL,
   visit_date DATE,

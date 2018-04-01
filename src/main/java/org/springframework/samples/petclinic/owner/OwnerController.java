@@ -43,6 +43,7 @@ class OwnerController {
     private final OwnerRepository owners;
 
 
+
     @Autowired
     public OwnerController(OwnerRepository clinicService) {
         this.owners = clinicService;

@@ -188,7 +188,7 @@ public class OwnerControllerTests {
      */
 
     @Test
-    public void testCheckConsistency() throws Exception{
+    public void testCheckInconsistency() throws Exception{
         OwnerToggles.forklifted = true;
 
         given(newOwners.findById(TEST_OWNER_ID)).willReturn(new Owner());
@@ -200,6 +200,19 @@ public class OwnerControllerTests {
             .andExpect(status().isOk())
             .andExpect(model().attribute("message", is("Number of Inconsistencies: 1")));
 
+    }
 
+    @Test
+    public void testCheckConsistency() throws Exception{
+        OwnerToggles.forklifted = true;
+
+        given(newOwners.findById(TEST_OWNER_ID)).willReturn(george);
+        Collection<Owner> results = new ArrayList<>();
+        results.add(george);
+        given(owners.findByLastName("")).willReturn(results);
+
+        mockMvc.perform(get("/owners/ConsistencyCheck"))
+            .andExpect(status().isOk())
+            .andExpect(model().attribute("message", is("Number of Inconsistencies: 0")));
     }
 }

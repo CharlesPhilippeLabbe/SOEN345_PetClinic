@@ -152,18 +152,19 @@ public class Owner extends Person {
         if(! (ob1 instanceof Owner)){
             return false;
         }
-
         Owner owner = (Owner) ob1;
-        if(owner.getId().equals(this.getId() )||
-            owner.getFirstName().equals(this.getFirstName()) ||
-            owner.getLastName().equals(this.getLastName()) ||
-            owner.getAddress().equals(this.getAddress()) ||
-            owner.getTelephone().equals(this.getTelephone() )||
+
+        if(owner.getId().equals(this.getId()) &&
+            owner.getFirstName().equals(this.getFirstName()) &&
+            owner.getLastName().equals(this.getLastName()) &&
+            owner.getAddress().equals(this.getAddress()) &&
+            owner.getCity().equals(this.getCity())&&
+            owner.getTelephone().equals(this.getTelephone() )&&
             owner.getPets().equals(this.getPets())){
-            return false;
+            return true;
         }
 
-        return true;
+        return false;
 
     }
 }

@@ -173,7 +173,7 @@ class OwnerController {
         int count = 0;
         if(OwnerToggles.newDB && OwnerToggles.oldDB && OwnerToggles.forklifted){
             for(Owner owner : results){
-                System.out.println(owner.toString());
+
                 Owner actual = newOwners.findById(owner.getId());
                 if(!actual.equals(owner)){
                     System.out.println("MIGRATION ERROR: " +

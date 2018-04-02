@@ -36,7 +36,7 @@ public class CustomOwnerRepositoryImpl implements CustomOwnerRepository{
         query.setParameter(1, id);
         Owner owner = (Owner)query.getSingleResult();
 
-        query = entityManager.createNativeQuery("SELECT * FROM new_pats WHERE owner = ?");
+        query = entityManager.createNativeQuery("SELECT * FROM new_pets WHERE owner = ?");
         query.setParameter(1, id);
         Collection<Pet> pets = query.getResultList();
         for(Pet pet : pets){
@@ -50,9 +50,9 @@ public class CustomOwnerRepositoryImpl implements CustomOwnerRepository{
      * @param owner
      */
     @Override
-    public void addNewOwner(Owner owner) {
+    public void save(Owner owner) {
         System.out.println("Executing custom query");
-        Query query = entityManager.createNativeQuery("INSERT IGNORE INTO new_owners VALUES ?");
+       /* Query query = entityManager.createNativeQuery("INSERT IGNORE INTO new_owners VALUES ?");
         query.setParameter(1, owner.getId());
         query.setParameter(2, owner.getFirstName());
         query.setParameter(3, owner.getLastName());
@@ -60,6 +60,6 @@ public class CustomOwnerRepositoryImpl implements CustomOwnerRepository{
         query.setParameter(5, owner.getCity());
         query.setParameter(6, owner.getTelephone());
 
-        query.getSingleResult();
+        query.getSingleResult();*/
     }
 }

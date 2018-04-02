@@ -11,7 +11,7 @@ import java.util.Collection;
 public interface CustomOwnerRepository {
      Collection<Owner> findByLastName(@Param("lastName") String lastName);
      Owner findById(@Param("id") Integer id);
-     void addNewOwner(Owner owner);
+     void save(Owner owner);
 }
 
 

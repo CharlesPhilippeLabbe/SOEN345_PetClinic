@@ -86,6 +86,9 @@ class OwnerController {
     public String processFindForm(Owner owner, BindingResult result, Map<String, Object> model) {
 
 
+
+
+
         // allow parameterless GET request for /owners to return all records
         if (owner.getLastName() == null) {
             owner.setLastName(""); // empty string signifies broadest possible search
@@ -150,7 +153,7 @@ class OwnerController {
 
         if(OwnerToggles.newDB && OwnerToggles.oldDB && !OwnerToggles.forklifted){
 
-            CompletableFuture.supplyAsync(()->{
+            //CompletableFuture.supplyAsync(()->{
                 // find owners by last name
 
                 System.out.println(results.size());
@@ -158,13 +161,13 @@ class OwnerController {
 
                     for(Owner owner : results){
                         System.out.println("Lifting " + owner.getLastName());
-                        newOwners.addNewOwner(owner);
+                        newOwners.save(owner);
                     }
                     OwnerToggles.forklifted = true;//forklifting only once
                 }
 
-                return true;
-            });
+             //   return true;
+           // });
         }
     }
 

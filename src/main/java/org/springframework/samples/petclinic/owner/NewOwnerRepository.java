@@ -54,7 +54,7 @@ public interface NewOwnerRepository extends  Repository<Owner, Integer>, CustomO
     Owner findById(@Param("id") Integer id);
 
 
-    void addNewOwner(Owner owner);
+    void save(Owner owner);
 
 
 

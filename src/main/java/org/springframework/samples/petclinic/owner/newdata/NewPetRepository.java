@@ -13,19 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.springframework.samples.petclinic.owner;
+package org.springframework.samples.petclinic.owner.newdata;
 
-import java.util.Collection;
-
+import java.util.List;
 
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
-import org.springframework.data.repository.query.Param;
-import org.springframework.samples.petclinic.owner.newdata.CustomOwnerRepository;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Repository class for <code>Owner</code> domain objects All method names are compliant with Spring Data naming
+ * Repository class for <code>NewPet</code> domain objects All method names are compliant with Spring Data naming
  * conventions so this interface can easily be extended for Spring Data See here: http://static.springsource.org/spring-data/jpa/docs/current/reference/html/jpa.repositories.html#jpa.query-methods.query-creation
  *
  * @author Ken Krebs
@@ -33,29 +30,29 @@ import org.springframework.transaction.annotation.Transactional;
  * @author Sam Brannen
  * @author Michael Isvy
  */
-public interface NewOwnerRepository extends  Repository<Owner, Integer>, CustomOwnerRepository {
+public interface NewPetRepository extends Repository<NewPet, Integer> {
 
     /**
-     * Retrieve {@link Owner}s from the data store by last name, returning all owners
-     * whose last name <i>starts</i> with the given name.
-     * @param lastName Value to search for
-     * @return a Collection of matching {@link Owner}s (or an empty Collection if none
-     * found)
+     * Retrieve all {@link NewPetType}s from the data store.
+     * @return a Collection of {@link NewPetType}s.
      */
-
-    Collection<Owner> findByLastName(@Param("lastName") String lastName);
+    @Query("SELECT ptype FROM NewPetType ptype ORDER BY ptype.name")
+    @Transactional(readOnly = true)
+    List<NewPetType> findNewPetTypes();
 
     /**
-     * Retrieve an {@link Owner} from the data store by id.
+     * Retrieve a {@link NewPet} from the data store by id.
      * @param id the id to search for
-     * @return the {@link Owner} if found
+     * @return the {@link NewPet} if found
      */
+    @Transactional(readOnly = true)
+    NewPet findById(Integer id);
 
-    Owner findById(@Param("id") Integer id);
-
-
-    void addNewOwner(Owner owner);
-
-
+    /**
+     * Save a {@link NewPet} to the data store, either inserting or updating it.
+     * @param pet the {@link NewPet} to save
+     */
+    void save(NewPet pet);
 
 }
+

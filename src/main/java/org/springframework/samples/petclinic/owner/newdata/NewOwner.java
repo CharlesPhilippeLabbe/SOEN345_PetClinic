@@ -1,9 +1,11 @@
-package org.springframework.samples.petclinic.owner;
+package org.springframework.samples.petclinic.owner.newdata;
 
 import org.springframework.beans.support.MutableSortDefinition;
 import org.springframework.beans.support.PropertyComparator;
 import org.springframework.core.style.ToStringCreator;
 import org.springframework.samples.petclinic.model.Person;
+import org.springframework.samples.petclinic.owner.Owner;
+import org.springframework.samples.petclinic.owner.Pet;
 
 import javax.persistence.*;
 import javax.validation.constraints.Digits;
@@ -27,17 +29,18 @@ public class NewOwner extends Person {
     private String telephone;
 
     @OneToMany(cascade = CascadeType.ALL, mappedBy = "owner")
-    private Set<Pet> pets;
+    private Set<NewPet> pets;
 
     public NewOwner(){
         super();
     }
 
     public NewOwner(Owner owner){
+        super(owner);
         this.address = owner.getAddress();
         this.city = owner.getCity();
         this.telephone = owner.getTelephone();
-        this.pets = owner.getPrivatePets();
+        this.pets = getNewPetsSet(owner.getPets());
     }
 
 
@@ -65,31 +68,31 @@ public class NewOwner extends Person {
         this.telephone = telephone;
     }
 
-    protected Set<Pet> getPetsInternal() {
+    protected Set<NewPet> getPetsInternal() {
         if (this.pets == null) {
             this.pets = new HashSet<>();
         }
         return this.pets;
     }
 
-    protected void setPetsInternal(Set<Pet> pets) {
+    protected void setPetsInternal(Set<NewPet> pets) {
         this.pets = pets;
     }
 
-    public List<Pet> getPets() {
-        List<Pet> sortedPets = new ArrayList<>(getPetsInternal());
+    public List<NewPet> getPets() {
+        List<NewPet> sortedPets = new ArrayList<>(getPetsInternal());
         PropertyComparator.sort(sortedPets,
             new MutableSortDefinition("name", true, true));
         return Collections.unmodifiableList(sortedPets);
     }
 
-    //TODO new pets
-   /* public void addPet(Pet pet) {
+
+    public void addPet(NewPet pet) {
         if (pet.isNew()) {
             getPetsInternal().add(pet);
         }
         pet.setOwner(this);
-    }*/
+    }
 
     /**
      * Return the Pet with the given name, or null if none found for this Owner.
@@ -97,7 +100,7 @@ public class NewOwner extends Person {
      * @param name to test
      * @return true if pet name is already in use
      */
-    public Pet getPet(String name) {
+    public NewPet getPet(String name) {
         return getPet(name, false);
     }
 
@@ -107,9 +110,9 @@ public class NewOwner extends Person {
      * @param name to test
      * @return true if pet name is already in use
      */
-    public Pet getPet(String name, boolean ignoreNew) {
+    public NewPet getPet(String name, boolean ignoreNew) {
         name = name.toLowerCase();
-        for (Pet pet : getPetsInternal()) {
+        for (NewPet pet : getPetsInternal()) {
             if (!ignoreNew || !pet.isNew()) {
                 String compName = pet.getName();
                 compName = compName.toLowerCase();
@@ -121,8 +124,14 @@ public class NewOwner extends Person {
         return null;
     }
 
-    protected Set<Pet> getPrivatePets(){
-        return this.pets;
+    private Set<NewPet> getNewPetsSet(Collection<Pet> pets){
+        Set<NewPet> newSet = new HashSet<>();
+
+        for(Pet pet: pets){
+            newSet.add(new NewPet(pet));
+        }
+
+        return newSet;
     }
 
     @Override

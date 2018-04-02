@@ -35,6 +35,14 @@ public class BaseEntity implements Serializable {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
+    public BaseEntity(){
+
+    }
+
+    public BaseEntity(BaseEntity base){
+        this.id = base.getId();
+    }
+
     public Integer getId() {
         return id;
     }

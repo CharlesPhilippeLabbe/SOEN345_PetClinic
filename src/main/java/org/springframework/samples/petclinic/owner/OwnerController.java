@@ -16,6 +16,7 @@
 package org.springframework.samples.petclinic.owner;
 
 import org.springframework.beans.factory.annotation.Autowired;
+
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -42,14 +43,15 @@ class OwnerController {
 
     private static final String VIEWS_OWNER_CREATE_OR_UPDATE_FORM = "owners/createOrUpdateOwnerForm";
     private final OwnerRepository owners;
-    private final NewOwnerRepository newOwners;
+    @Autowired
+    private NewOwnerRepository newOwners;
 
 
 
     @Autowired
-    public OwnerController(OwnerRepository clinicService, NewOwnerRepository newClinicService) {
+    public OwnerController(OwnerRepository clinicService) {
         this.owners = clinicService;
-        this.newOwners = newClinicService;
+        //this.newOwners = newClinicService;
     }
 
     @InitBinder
@@ -82,8 +84,7 @@ class OwnerController {
 
     @GetMapping("/owners")
     public String processFindForm(Owner owner, BindingResult result, Map<String, Object> model) {
-        //triggering forklift
-        this.forklift();
+
 
         // allow parameterless GET request for /owners to return all records
         if (owner.getLastName() == null) {
@@ -92,6 +93,12 @@ class OwnerController {
 
         // find owners by last name
         Collection<Owner> results = this.owners.findByLastName(owner.getLastName());
+
+        if(owner.getLastName() == ""){
+            //triggering forklift
+            this.forklift(results);
+        }
+
         if (results.isEmpty()) {
             // no owners found
             result.rejectValue("lastName", "notFound", "not found");
@@ -139,20 +146,21 @@ class OwnerController {
     }
 
 
-    public void forklift(){
+    private void forklift(Collection<Owner> results){
 
-        if(OwnerToggles.newDB && OwnerToggles.oldDB){
+        if(OwnerToggles.newDB && OwnerToggles.oldDB && !OwnerToggles.forklifted){
 
             CompletableFuture.supplyAsync(()->{
                 // find owners by last name
-                Collection<Owner> results = owners.findByLastName("");
 
+                System.out.println(results.size());
                 if(results.size() >0){
 
                     for(Owner owner : results){
                         System.out.println("Lifting " + owner.getLastName());
-                        newOwners.save(new NewOwner(owner));
+                        newOwners.addNewOwner(owner);
                     }
+                    OwnerToggles.forklifted = true;//forklifting only once
                 }
 
                 return true;

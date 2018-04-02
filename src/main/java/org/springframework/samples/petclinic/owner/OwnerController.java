@@ -29,6 +29,7 @@ import org.springframework.web.servlet.ModelAndView;
 import javax.validation.Valid;
 import java.util.Collection;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * @author Juergen Hoeller
@@ -41,12 +42,14 @@ class OwnerController {
 
     private static final String VIEWS_OWNER_CREATE_OR_UPDATE_FORM = "owners/createOrUpdateOwnerForm";
     private final OwnerRepository owners;
+    private final NewOwnerRepository newOwners;
 
 
 
     @Autowired
     public OwnerController(OwnerRepository clinicService, NewOwnerRepository newClinicService) {
         this.owners = clinicService;
+        this.newOwners = newClinicService;
     }
 
     @InitBinder
@@ -79,6 +82,8 @@ class OwnerController {
 
     @GetMapping("/owners")
     public String processFindForm(Owner owner, BindingResult result, Map<String, Object> model) {
+        //triggering forklift
+        this.forklift();
 
         // allow parameterless GET request for /owners to return all records
         if (owner.getLastName() == null) {
@@ -131,6 +136,28 @@ class OwnerController {
         ModelAndView mav = new ModelAndView("owners/ownerDetails");
         mav.addObject(this.owners.findById(ownerId));
         return mav;
+    }
+
+
+    public void forklift(){
+
+        if(OwnerToggles.newDB && OwnerToggles.oldDB){
+
+            CompletableFuture.supplyAsync(()->{
+                // find owners by last name
+                Collection<Owner> results = owners.findByLastName("");
+
+                if(results.size() >0){
+
+                    for(Owner owner : results){
+                        System.out.println("Lifting " + owner.getLastName());
+                        newOwners.save(new NewOwner(owner));
+                    }
+                }
+
+                return true;
+            });
+        }
     }
 
 }

@@ -136,6 +136,10 @@ public class Owner extends Person {
         return null;
     }
 
+    protected Set<Pet> getPrivatePets(){
+        return this.pets;
+    }
+
     @Override
     public String toString() {
         return new ToStringCreator(this)

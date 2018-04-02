@@ -169,13 +169,11 @@ class OwnerController {
         }
     }
 
-    public void checkConsistency(Collection<Owner> results){
-
+    private int checkConsistency(Collection<Owner> results){
+        int count = 0;
         if(OwnerToggles.newDB && OwnerToggles.oldDB && OwnerToggles.forklifted){
-
-            int count = 0;
             for(Owner owner : results){
-
+                System.out.println(owner.toString());
                 Owner actual = newOwners.findById(owner.getId());
                 if(!actual.equals(owner)){
                     System.out.println("MIGRATION ERROR: " +
@@ -185,6 +183,15 @@ class OwnerController {
                     }
                 }
         }
+        return count;
+    }
+
+    @GetMapping("/owners/ConsistencyCheck")
+    public ModelAndView getConsistencyCheck(){
+        Collection<Owner> results = this.owners.findByLastName("");
+        ModelAndView mav = new ModelAndView("owners/checkConsistency");
+        mav.addObject("message","Number of Inconsistencies: " + checkConsistency(results));
+        return mav;
     }
 
 }

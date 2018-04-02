@@ -85,10 +85,6 @@ class OwnerController {
     @GetMapping("/owners")
     public String processFindForm(Owner owner, BindingResult result, Map<String, Object> model) {
 
-
-
-
-
         // allow parameterless GET request for /owners to return all records
         if (owner.getLastName() == null) {
             owner.setLastName(""); // empty string signifies broadest possible search
@@ -99,7 +95,12 @@ class OwnerController {
 
         if(owner.getLastName() == ""){
             //triggering forklift
-            this.forklift(results);
+            CompletableFuture.supplyAsync(() ->{
+                forklift(results);
+                return results;
+            }).thenAccept(this::checkConsistency);
+
+
         }
 
         if (results.isEmpty()) {
@@ -153,21 +154,36 @@ class OwnerController {
 
         if(OwnerToggles.newDB && OwnerToggles.oldDB && !OwnerToggles.forklifted){
 
-            //CompletableFuture.supplyAsync(()->{
-                // find owners by last name
+            // find owners by last name
 
-                System.out.println(results.size());
-                if(results.size() >0){
+            System.out.println(results.size());
+            if(results.size() >0){
 
-                    for(Owner owner : results){
-                        System.out.println("Lifting " + owner.getLastName());
-                        newOwners.save(owner);
-                    }
-                    OwnerToggles.forklifted = true;//forklifting only once
+                for(Owner owner : results){
+                    System.out.println("Lifting " + owner.getLastName());
+                    newOwners.save(owner);
                 }
+                OwnerToggles.forklifted = true;//forklifting only once
+            }
 
-             //   return true;
-           // });
+        }
+    }
+
+    public void checkConsistency(Collection<Owner> results){
+
+        if(OwnerToggles.newDB && OwnerToggles.oldDB && OwnerToggles.forklifted){
+
+            int count = 0;
+            for(Owner owner : results){
+
+                Owner actual = newOwners.findById(owner.getId());
+                if(!actual.equals(owner)){
+                    System.out.println("MIGRATION ERROR: " +
+                        "found: \n" + actual.toString() +
+                        "but was supposed to be: \n" + owner.toString());
+                        count++;
+                    }
+                }
         }
     }
 

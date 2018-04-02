@@ -146,4 +146,24 @@ public class Owner extends Person {
                 .append("firstName", this.getFirstName()).append("address", this.address)
                 .append("city", this.city).append("telephone", this.telephone).toString();
     }
+
+    @Override
+    public boolean equals(Object ob1){
+        if(! (ob1 instanceof Owner)){
+            return false;
+        }
+
+        Owner owner = (Owner) ob1;
+        if(owner.getId().equals(this.getId() )||
+            owner.getFirstName().equals(this.getFirstName()) ||
+            owner.getLastName().equals(this.getLastName()) ||
+            owner.getAddress().equals(this.getAddress()) ||
+            owner.getTelephone().equals(this.getTelephone() )||
+            owner.getPets().equals(this.getPets())){
+            return false;
+        }
+
+        return true;
+
+    }
 }

@@ -20,14 +20,14 @@ public class CustomPetRepositoryImpl implements CustomPetRepository {
     @Transactional
     @Override
     public List<PetType> findPetTypes(){
-        Query query = entityManager.createNativeQuery("SELECT * FROM new_types ORDER BY name", PetType.class);
+        Query query = entityManager.createNativeQuery("SELECT * FROM new_types ORDER BY name");
         return query.getResultList();
     }
 
     @Transactional
     @Override
     public Pet findById(Integer id) {
-        Query query = entityManager.createNativeQuery("SELECT * FROM new_pets WHERE id = ?", Pet.class);
+        Query query = entityManager.createNativeQuery("SELECT * FROM new_pets WHERE id = ?");
         query.setParameter(1, id);
         return (Pet)query.getSingleResult();
     }
@@ -45,7 +45,7 @@ public class CustomPetRepositoryImpl implements CustomPetRepository {
         query.setParameter("type_id", pet.getType().getId());
         query.setParameter("owner_id", pet.getOwner().getId());
 
-        query.executeUpdate();
+        query.getSingleResult();
 
     }
 

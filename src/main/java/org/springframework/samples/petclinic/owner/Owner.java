@@ -154,7 +154,14 @@ public class Owner extends Person {
         }
         Owner owner = (Owner) ob1;
 
-        if(owner.getId().equals(this.getId()) &&
+        if(owner.getId() == null ||
+            owner.getFirstName() == null||
+            owner.getLastName() == null||
+            owner.getAddress() == null||
+            owner.getCity() == null ||
+            owner.getTelephone() == null){
+            return false;
+        }else if(owner.getId().equals(this.getId()) &&
             owner.getFirstName().equals(this.getFirstName()) &&
             owner.getLastName().equals(this.getLastName()) &&
             owner.getAddress().equals(this.getAddress()) &&

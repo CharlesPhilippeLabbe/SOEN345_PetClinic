@@ -215,4 +215,61 @@ public class OwnerControllerTests {
             .andExpect(status().isOk())
             .andExpect(model().attribute("message", is("Number of Inconsistencies: 0")));
     }
+
+    @Test
+    public void testReadByIdConsistencyCheck() throws Exception{
+        OwnerToggles.forklifted = true;
+
+        given(newOwners.findById(TEST_OWNER_ID)).willReturn(george);
+
+        given(owners.findById(TEST_OWNER_ID)).willReturn(george);
+        mockMvc.perform(get("/owners/ReadConsistencyCheck/"+ TEST_OWNER_ID))
+            .andExpect(status().isOk())
+            .andExpect(model().attribute("message", is("Number of Read Inconsistencies: 0")));
+
+        given(owners.findById(TEST_OWNER_ID)).willReturn(new Owner());
+        mockMvc.perform(get("/owners/ReadConsistencyCheck/"+ TEST_OWNER_ID))
+            .andExpect(status().isOk())
+            .andExpect(model().attribute("message", is("Number of Read Inconsistencies: 1")));
+
+
+    }
+
+    @Test
+    public void testReadByLastNameConsistencyCheck() throws Exception{
+        OwnerToggles.forklifted = true;
+
+        Collection<Owner> results = new ArrayList<>();
+        results.add(george);
+        Collection<Owner> newResults = new ArrayList<>();
+        newResults.add(george);
+        given(owners.findByLastName("")).willReturn(results);
+        given(newOwners.findByLastName("")).willReturn(newResults);
+
+
+        mockMvc.perform(get("/owners/ReadConsistencyCheck"))
+            .andExpect(status().isOk())
+            .andExpect(model().attribute("message", is("Number of Read Inconsistencies: 0")));
+
+        results.add(george);
+        george.setFirstName("george");
+
+        mockMvc.perform(get("/owners/ReadConsistencyCheck"))
+            .andExpect(status().isOk())
+            .andExpect(model().attribute("message", is("Number of Read Inconsistencies: 1")));
+
+        newResults.add(new Owner());
+
+        mockMvc.perform(get("/owners/ReadConsistencyCheck"))
+            .andExpect(status().isOk())
+            .andExpect(model().attribute("message", is("Number of Read Inconsistencies: 2")));
+
+        newResults.add(new Owner());
+
+        mockMvc.perform(get("/owners/ReadConsistencyCheck"))
+            .andExpect(status().isOk())
+            .andExpect(model().attribute("message", is("Number of Read Inconsistencies: 4")));
+
+    }
+
 }

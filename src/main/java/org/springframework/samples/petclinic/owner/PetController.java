@@ -87,6 +87,10 @@ class PetController {
             result.rejectValue("name", "duplicate", "already exists");
         }
         owner.addPet(pet);
+        
+        //get pet by petTypes
+//        Collection<Pet> results =  (Collection<Pet>) this.pets.findById(pet.getId());
+        
         if (result.hasErrors()) {
             model.put("pet", pet);
             return VIEWS_PETS_CREATE_OR_UPDATE_FORM;
@@ -136,16 +140,16 @@ class PetController {
     	}
     }
     
-    private int checkConsistency(List<PetType> results){
+    private int checkConsistency(Collection<Pet> results){
         int count = 0;
         if(PetToggles.newDB && PetToggles.oldDB && PetToggles.forklifted){
-            for(PetType petTypes : results){
+            for(Pet pet : results){
 
-                Pet actual = newPets.findById(petTypes.getId());
-                if(!actual.equals(petTypes)){
+                Pet actual = newPets.findById(pet.getId());
+                if(!actual.equals(pet)){
                     System.out.println("MIGRATION ERROR: " +
                         "found: \n" + actual.toString() +
-                        "but was supposed to be: \n" + petTypes.toString());
+                        "but was supposed to be: \n" + pet.toString());
                         count++;
                     }
                 }

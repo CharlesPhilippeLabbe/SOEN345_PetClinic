@@ -113,5 +113,25 @@ public class Pet extends NamedEntity {
         getVisitsInternal().add(visit);
         visit.setPetId(this.getId());
     }
+    
+    @Override
+    public boolean equals(Object ob1){
+        if(! (ob1 instanceof Pet)){
+            return false;
+        }
+        Pet pet = (Pet) ob1;
+
+        if(pet.getId().equals(this.getId()) &&
+        	pet.getBirthDate().equals(this.getBirthDate())&&
+        	pet.getName().equals(this.getName())&&
+        	pet.getOwner().equals(this.getOwner())&&
+        	pet.getType().equals(this.getType())&&
+        	pet.getVisits().equals(this.getVisits())){
+            return true;
+        }
+
+        return false;
+
+    }
 
 }

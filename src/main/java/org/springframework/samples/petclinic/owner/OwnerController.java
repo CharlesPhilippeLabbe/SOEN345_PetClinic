@@ -56,8 +56,10 @@ class OwnerController {
 
         CompletableFuture.supplyAsync(() ->{
 
+            forklift();
+
             //wait until those conditions are met
-            while(totalReads < 100 && ((double)readInconsistencies/totalReads) < 0.05){
+            while(totalReads < 100 && ((double)readInconsistencies/totalReads) < 0.01){
                 try{
                     Thread.sleep(1000);
                     if(totalReads >0){
@@ -140,15 +142,6 @@ class OwnerController {
             results = this.newOwners.findByLastName(owner.getLastName());
         }
 
-        if(owner.getLastName() == ""){
-            //triggering forklift
-            CompletableFuture.supplyAsync(() ->{
-                forklift(results);
-                return results;
-            }).thenAccept(this::checkConsistency);
-
-
-        }
 
         if (results.isEmpty()) {
             // no owners found
@@ -235,24 +228,27 @@ class OwnerController {
     }
 
 
-    private void forklift(Collection<Owner> results){
+    private void forklift(){
 
         if(OwnerToggles.newDB && OwnerToggles.oldDB && !OwnerToggles.forklifted){
-
+            Iterator<Owner> results = this.owners.findByLastName("").iterator();
             // find owners by last name
-
-            System.out.println(results.size());
-            if(results.size() >0){
-
-                for(Owner owner : results){
-                    System.out.println("Lifting " + owner.getLastName());
+                while(results.hasNext()){
+                    Owner owner = results.next();
+                    System.out.println("Lifting: " + owner.getLastName());
                     newOwners.save(owner);
+                    try {
+                        Thread.sleep(500);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
                 }
                 OwnerToggles.forklifted = true;//forklifting only once
-            }
 
         }
     }
+
+
 
     private int checkConsistency(Collection<Owner> results){
         int count = 0;

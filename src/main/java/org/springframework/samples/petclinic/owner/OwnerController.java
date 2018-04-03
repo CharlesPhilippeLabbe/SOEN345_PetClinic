@@ -16,7 +16,7 @@
 package org.springframework.samples.petclinic.owner;
 
 import org.springframework.beans.factory.annotation.Autowired;
-
+import org.springframework.samples.petclinic.owner.newdata.HashStorage;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -41,172 +41,185 @@ import java.util.concurrent.CompletableFuture;
 @Controller
 class OwnerController {
 
-    private static final String VIEWS_OWNER_CREATE_OR_UPDATE_FORM = "owners/createOrUpdateOwnerForm";
-    private final OwnerRepository owners;
-    @Autowired
-    private NewOwnerRepository newOwners;
+	private static final String VIEWS_OWNER_CREATE_OR_UPDATE_FORM = "owners/createOrUpdateOwnerForm";
+	private final OwnerRepository owners;
+	@Autowired
+	private NewOwnerRepository newOwners;
+
+	@Autowired
+	private HashStorage hashStorage;
+
+	@Autowired
+	public OwnerController(OwnerRepository clinicService) {
+		this.owners = clinicService;
+		// this.newOwners = newClinicService;
+	}
+
+	@InitBinder
+	public void setAllowedFields(WebDataBinder dataBinder) {
+		dataBinder.setDisallowedFields("id");
+	}
+
+	@GetMapping("/owners/new")
+	public String initCreationForm(Map<String, Object> model) {
+		Owner owner = new Owner();
+		model.put("owner", owner);
+		return VIEWS_OWNER_CREATE_OR_UPDATE_FORM;
+	}
+
+	@PostMapping("/owners/new")
+	public String processCreationForm(@Valid Owner owner, BindingResult result) {
+		if (result.hasErrors()) {
+			return VIEWS_OWNER_CREATE_OR_UPDATE_FORM;
+		}
+
+		else {
+			if (OwnerToggles.newDB) {
+				this.newOwners.save(owner);
+			}
+
+			if (OwnerToggles.oldDB && OwnerToggles.forklifted) {
+				this.owners.save(owner);
+			}
+
+			return "redirect:/owners/" + owner.getId();
+		}
+	}
+
+	@GetMapping("/owners/find")
+	public String initFindForm(Map<String, Object> model) {
+		model.put("owner", new Owner());
+		return "owners/findOwners";
+	}
+
+	@GetMapping("/owners")
+	public String processFindForm(Owner owner, BindingResult result, Map<String, Object> model) {
+
+		// allow parameterless GET request for /owners to return all records
+		if (owner.getLastName() == null) {
+			owner.setLastName(""); // empty string signifies broadest possible search
+		}
+
+		// find owners by last name
+		Collection<Owner> results = this.owners.findByLastName(owner.getLastName());
+
+		if (owner.getLastName() == "") {
+			// triggering forklift
+			CompletableFuture.supplyAsync(() -> {
+				forklift(results);
+				return results;
+			}).thenAccept(this::checkConsistency);
+
+		}
+
+		if (results.isEmpty()) {
+			// no owners found
+			result.rejectValue("lastName", "notFound", "not found");
+			return "owners/findOwners";
+		} else if (results.size() == 1) {
+			// 1 owner found
+			owner = results.iterator().next();
+			return "redirect:/owners/" + owner.getId();
+		} else {
+			// multiple owners found
+			model.put("selections", results);
+			return "owners/ownersList";
+		}
+	}
+
+	@GetMapping("/owners/{ownerId}/edit")
+	public String initUpdateOwnerForm(@PathVariable("ownerId") int ownerId, Model model) {
+		Owner owner = this.owners.findById(ownerId);
+		model.addAttribute(owner);
+		return VIEWS_OWNER_CREATE_OR_UPDATE_FORM;
+	}
+
+	@PostMapping("/owners/{ownerId}/edit")
+	public String processUpdateOwnerForm(@Valid Owner owner, BindingResult result,
+			@PathVariable("ownerId") int ownerId) {
+		if (result.hasErrors()) {
+			return VIEWS_OWNER_CREATE_OR_UPDATE_FORM;
+		} else {
+			owner.setId(ownerId);
+			this.owners.save(owner);
+			return "redirect:/owners/{ownerId}";
+		}
+	}
+
+	/**
+	 * Custom handler for displaying an owner.
+	 *
+	 * @param ownerId
+	 *            the ID of the owner to display
+	 * @return a ModelMap with the model attributes for the view
+	 */
+	@GetMapping("/owners/{ownerId}")
+	public ModelAndView showOwner(@PathVariable("ownerId") int ownerId) {
+		ModelAndView mav = new ModelAndView("owners/ownerDetails");
+		mav.addObject(this.owners.findById(ownerId));
+		return mav;
+	}
+
+	private void forklift(Collection<Owner> results) {
+
+		if (OwnerToggles.newDB && OwnerToggles.oldDB && !OwnerToggles.forklifted) {
+
+			// find owners by last name
+
+			System.out.println(results.size());
+			if (results.size() > 0) {
+
+				for (Owner owner : results) {
+					System.out.println("Lifting " + owner.getLastName());
+					newOwners.save(owner);
+				}
+				OwnerToggles.forklifted = true;// forklifting only once
+			}
+
+		}
+	}
+
+	private int checkConsistency(Collection<Owner> results) {
+		int count = 0;
+
+		if (OwnerToggles.newDB && OwnerToggles.oldDB && OwnerToggles.forklifted) {
+			for (Owner owner : results) {
+				hashStorage.add(owner);
+				Owner actual = newOwners.findById(owner.getId());
+				if (!actual.equals(owner)) {
+
+					System.out.println("MIGRATION ERROR: " + "found: \n" + actual.toString()
+							+ "\nbut was supposed to be: \n" + owner.toString());
+					count++;
+				}
+				newOwners.save(owner);
+			}
+		}
+		return count;
+	}
+
+	// #7 of Milestone 3
+	private int checkHashConsistency() {
+		int count = 0;
+		
+		for (int id : hashStorage.getIds()) {
+			Owner actual = newOwners.findById(id);
+			if (actual.hashCode() != hashStorage.get(id)) {
+				System.out.println("MIGRATION ERROR: " + "found: \n" + actual.hashCode()
+						+ "\nbut was supposed to be: \n" + hashStorage.get(id));
+				count++;
+			}
+		}
+		return count;
+	}
 
 
-
-    @Autowired
-    public OwnerController(OwnerRepository clinicService) {
-        this.owners = clinicService;
-        //this.newOwners = newClinicService;
-    }
-
-    @InitBinder
-    public void setAllowedFields(WebDataBinder dataBinder) {
-        dataBinder.setDisallowedFields("id");
-    }
-
-    @GetMapping("/owners/new")
-    public String initCreationForm(Map<String, Object> model) {
-        Owner owner = new Owner();
-        model.put("owner", owner);
-        return VIEWS_OWNER_CREATE_OR_UPDATE_FORM;
-    }
-
-    @PostMapping("/owners/new")
-    public String processCreationForm(@Valid Owner owner, BindingResult result) {
-        if (result.hasErrors()) 
-        {
-            return VIEWS_OWNER_CREATE_OR_UPDATE_FORM;
-        } 
-        
-        else 
-        {
-	        	if (OwnerToggles.newDB) 
-	        	{
-	        		this.newOwners.save(owner);
-	        	}
-	        	
-	        	if (OwnerToggles.oldDB && OwnerToggles.forklifted) 
-	        	{
-	            this.owners.save(owner);
-	        	}
-            
-	        	return "redirect:/owners/" + owner.getId();
-        }
-    }
-
-    @GetMapping("/owners/find")
-    public String initFindForm(Map<String, Object> model) {
-        model.put("owner", new Owner());
-        return "owners/findOwners";
-    }
-
-    @GetMapping("/owners")
-    public String processFindForm(Owner owner, BindingResult result, Map<String, Object> model) {
-
-        // allow parameterless GET request for /owners to return all records
-        if (owner.getLastName() == null) {
-            owner.setLastName(""); // empty string signifies broadest possible search
-        }
-
-        // find owners by last name
-        Collection<Owner> results = this.owners.findByLastName(owner.getLastName());
-
-        if(owner.getLastName() == ""){
-            //triggering forklift
-            CompletableFuture.supplyAsync(() ->{
-                forklift(results);
-                return results;
-            }).thenAccept(this::checkConsistency);
-
-
-        }
-
-        if (results.isEmpty()) {
-            // no owners found
-            result.rejectValue("lastName", "notFound", "not found");
-            return "owners/findOwners";
-        } else if (results.size() == 1) {
-            // 1 owner found
-            owner = results.iterator().next();
-            return "redirect:/owners/" + owner.getId();
-        } else {
-            // multiple owners found
-            model.put("selections", results);
-            return "owners/ownersList";
-        }
-    }
-
-    @GetMapping("/owners/{ownerId}/edit")
-    public String initUpdateOwnerForm(@PathVariable("ownerId") int ownerId, Model model) {
-        Owner owner = this.owners.findById(ownerId);
-        model.addAttribute(owner);
-        return VIEWS_OWNER_CREATE_OR_UPDATE_FORM;
-    }
-
-    @PostMapping("/owners/{ownerId}/edit")
-    public String processUpdateOwnerForm(@Valid Owner owner, BindingResult result, @PathVariable("ownerId") int ownerId) {
-        if (result.hasErrors()) {
-            return VIEWS_OWNER_CREATE_OR_UPDATE_FORM;
-        } else {
-            owner.setId(ownerId);
-            this.owners.save(owner);
-            return "redirect:/owners/{ownerId}";
-        }
-    }
-
-    /**
-     * Custom handler for displaying an owner.
-     *
-     * @param ownerId the ID of the owner to display
-     * @return a ModelMap with the model attributes for the view
-     */
-    @GetMapping("/owners/{ownerId}")
-    public ModelAndView showOwner(@PathVariable("ownerId") int ownerId) {
-        ModelAndView mav = new ModelAndView("owners/ownerDetails");
-        mav.addObject(this.owners.findById(ownerId));
-        return mav;
-    }
-
-
-    private void forklift(Collection<Owner> results){
-
-        if(OwnerToggles.newDB && OwnerToggles.oldDB && !OwnerToggles.forklifted){
-
-            // find owners by last name
-
-            System.out.println(results.size());
-            if(results.size() >0){
-
-                for(Owner owner : results){
-                    System.out.println("Lifting " + owner.getLastName());
-                    newOwners.save(owner);
-                }
-                OwnerToggles.forklifted = true;//forklifting only once
-            }
-
-        }
-    }
-
-    private int checkConsistency(Collection<Owner> results){
-        int count = 0;
-        if(OwnerToggles.newDB && OwnerToggles.oldDB && OwnerToggles.forklifted){
-            for(Owner owner : results){
-
-                Owner actual = newOwners.findById(owner.getId());
-                if(!actual.equals(owner)){
-
-                    System.out.println("MIGRATION ERROR: " +
-                        "found: \n" + actual.toString() +
-                        "\nbut was supposed to be: \n" + owner.toString());
-                        count++;
-                    }
-                    newOwners.save(owner);
-                }
-        }
-        return count;
-    }
-
-    @GetMapping("/owners/ConsistencyCheck")
-    public ModelAndView getConsistencyCheck(){
-        Collection<Owner> results = this.owners.findByLastName("");
-        ModelAndView mav = new ModelAndView("owners/checkConsistency");
-        mav.addObject("message","Number of Inconsistencies: " + checkConsistency(results));
-        return mav;
-    }
+	@GetMapping("/owners/ConsistencyCheck")
+	public ModelAndView getConsistencyCheck() {
+		Collection<Owner> results = this.owners.findByLastName("");
+		ModelAndView mav = new ModelAndView("owners/checkConsistency");
+		mav.addObject("message", "Number of Inconsistencies: " + checkConsistency(results));
+		return mav;
+	}
 
 }

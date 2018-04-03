@@ -1,3 +1,12 @@
+#SOEN 345 - Data Migration
+Because the application allows two types of databases (HSQL and MySql) we wanted to migrated from one to the other (from in-memory database to persistent database). We tried for a couple of hours to make the spring application accept two database instances without success.
+
+Hence, we decided to migrate from a set of tables to another. To imitate we added a set of new data repository implementations with new queries.
+
+
+
+
+
 # Spring PetClinic Sample Application [![Build Status](https://travis-ci.org/spring-projects/spring-petclinic.png?branch=master)](https://travis-ci.org/spring-projects/spring-petclinic/)
 
 ## Understanding the Spring Petclinic application with a few diagrams

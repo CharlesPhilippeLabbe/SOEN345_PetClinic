@@ -24,10 +24,11 @@ public class CustomOwnerRepositoryImpl implements CustomOwnerRepository{
     @Transactional
     @Override
     public Collection<Owner> findByLastName(String lastName) {
-        Query query = entityManager.createNativeQuery("SELECT DISTINCT id FROM new_owners LEFT JOIN pets using (id) WHERE last_name LIKE ?", Owner.class);
-        query.setParameter(1, lastName);
+        Query query = entityManager.createNativeQuery("SELECT DISTINCT * FROM new_owners LEFT JOIN pets using (id) WHERE last_name LIKE :last_name", Owner.class);
+        query.setParameter("last_name", lastName + "%");
 
         Collection<Owner> owners = query.getResultList();
+        System.out.println(owners.size());
         return owners;
     }
 

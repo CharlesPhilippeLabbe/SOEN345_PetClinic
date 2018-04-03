@@ -28,8 +28,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.servlet.ModelAndView;
 
 import javax.validation.Valid;
-import java.util.Collection;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -43,6 +42,8 @@ class OwnerController {
 
     private static final String VIEWS_OWNER_CREATE_OR_UPDATE_FORM = "owners/createOrUpdateOwnerForm";
     private final OwnerRepository owners;
+    private static int readInconsistencies = 0;
+    private static int totalReads = 1;//set to one, for ratio's sake
     @Autowired
     private NewOwnerRepository newOwners;
 
@@ -52,6 +53,28 @@ class OwnerController {
     public OwnerController(OwnerRepository clinicService) {
         this.owners = clinicService;
         //this.newOwners = newClinicService;
+
+        CompletableFuture.supplyAsync(() ->{
+
+            forklift();
+
+            //wait until those conditions are met
+            while(totalReads < 100 && ((double)readInconsistencies/totalReads) < 0.01){
+                try{
+                    Thread.sleep(1000);
+                    if(totalReads >0){
+                        System.out.println("#################################################################");
+                        System.out.println("Total Reads: " + totalReads);
+                        System.out.println("Miss ratio: " + (readInconsistencies/totalReads));
+                    }
+                }catch(InterruptedException e){
+                }
+            }
+            System.out.println("D a t a b a s e   s w a p p e d !!!!");
+            //once the conditions are met swap databases
+            OwnerToggles.oldDB = false;
+            return true;
+        });
     }
 
     @InitBinder
@@ -68,11 +91,24 @@ class OwnerController {
 
     @PostMapping("/owners/new")
     public String processCreationForm(@Valid Owner owner, BindingResult result) {
-        if (result.hasErrors()) {
+        if (result.hasErrors())
+        {
             return VIEWS_OWNER_CREATE_OR_UPDATE_FORM;
-        } else {
-            this.owners.save(owner);
-            return "redirect:/owners/" + owner.getId();
+        }
+
+        else
+        {
+	        	if (OwnerToggles.newDB)
+	        	{
+	        		this.newOwners.save(owner);
+	        	}
+
+	        	if (OwnerToggles.oldDB && OwnerToggles.forklifted)
+	        	{
+	            this.owners.save(owner);
+	        	}
+
+	        	return "redirect:/owners/" + owner.getId();
         }
     }
 
@@ -90,18 +126,22 @@ class OwnerController {
             owner.setLastName(""); // empty string signifies broadest possible search
         }
 
+        Collection<Owner> results;
+
         // find owners by last name
-        Collection<Owner> results = this.owners.findByLastName(owner.getLastName());
+        if(OwnerToggles.oldDB){
+            results = this.owners.findByLastName(owner.getLastName());
 
-        if(owner.getLastName() == ""){
-            //triggering forklift
-            CompletableFuture.supplyAsync(() ->{
-                forklift(results);
-                return results;
-            }).thenAccept(this::checkConsistency);
+            //Read inconsistency checker
+            if(OwnerToggles.newDB && OwnerToggles.forklifted){
+                final String L = owner.getLastName();
+                CompletableFuture.supplyAsync(()-> readByLastNameInconsistency(L, results));
+            }
 
-
+        }else{//only old db setup
+            results = this.newOwners.findByLastName(owner.getLastName());
         }
+
 
         if (results.isEmpty()) {
             // no owners found
@@ -120,7 +160,18 @@ class OwnerController {
 
     @GetMapping("/owners/{ownerId}/edit")
     public String initUpdateOwnerForm(@PathVariable("ownerId") int ownerId, Model model) {
-        Owner owner = this.owners.findById(ownerId);
+        Owner owner;
+        if(OwnerToggles.oldDB){
+            owner = this.owners.findById(ownerId);
+
+            if(OwnerToggles.newDB && OwnerToggles.forklifted){
+                CompletableFuture.supplyAsync(() -> readByIdInconsistency(ownerId, owner));
+            }
+
+        }else{
+            owner = this.newOwners.findById(ownerId);
+        }
+        //Read inconsistency checker
         model.addAttribute(owner);
         return VIEWS_OWNER_CREATE_OR_UPDATE_FORM;
     }
@@ -129,9 +180,22 @@ class OwnerController {
     public String processUpdateOwnerForm(@Valid Owner owner, BindingResult result, @PathVariable("ownerId") int ownerId) {
         if (result.hasErrors()) {
             return VIEWS_OWNER_CREATE_OR_UPDATE_FORM;
-        } else {
+        }
+
+        else
+        {
             owner.setId(ownerId);
-            this.owners.save(owner);
+
+            if(OwnerToggles.oldDB )
+            {
+            		this.owners.save(owner);
+            }
+
+            if(OwnerToggles.newDB && OwnerToggles.forklifted)
+            {
+            		this.newOwners.save(owner);
+            }
+
             return "redirect:/owners/{ownerId}";
         }
     }
@@ -143,31 +207,48 @@ class OwnerController {
      * @return a ModelMap with the model attributes for the view
      */
     @GetMapping("/owners/{ownerId}")
-    public ModelAndView showOwner(@PathVariable("ownerId") int ownerId) {
+    public ModelAndView showOwner(@PathVariable("ownerId") final int ownerId) {
         ModelAndView mav = new ModelAndView("owners/ownerDetails");
-        mav.addObject(this.owners.findById(ownerId));
+
+        Owner owner;
+
+        if(OwnerToggles.oldDB){
+            owner = this.owners.findById(ownerId);
+
+            if(OwnerToggles.newDB && OwnerToggles.forklifted){
+                CompletableFuture.supplyAsync(() -> readByIdInconsistency(ownerId, owner));
+            }
+
+        }else{
+            owner = this.newOwners.findById(ownerId);
+        }
+
+        mav.addObject(owner);
         return mav;
     }
 
 
-    private void forklift(Collection<Owner> results){
+    private void forklift(){
 
         if(OwnerToggles.newDB && OwnerToggles.oldDB && !OwnerToggles.forklifted){
-
+            Iterator<Owner> results = this.owners.findByLastName("").iterator();
             // find owners by last name
-
-            System.out.println(results.size());
-            if(results.size() >0){
-
-                for(Owner owner : results){
-                    System.out.println("Lifting " + owner.getLastName());
+                while(results.hasNext()){
+                    Owner owner = results.next();
+                    System.out.println("Lifting: " + owner.getLastName());
                     newOwners.save(owner);
+                    try {
+                        Thread.sleep(500);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
                 }
                 OwnerToggles.forklifted = true;//forklifting only once
-            }
 
         }
     }
+
+
 
     private int checkConsistency(Collection<Owner> results){
         int count = 0;
@@ -176,7 +257,6 @@ class OwnerController {
 
                 Owner actual = newOwners.findById(owner.getId());
                 if(!actual.equals(owner)){
-
                     System.out.println("MIGRATION ERROR: " +
                         "found: \n" + actual.toString() +
                         "\nbut was supposed to be: \n" + owner.toString());
@@ -194,6 +274,79 @@ class OwnerController {
         ModelAndView mav = new ModelAndView("owners/checkConsistency");
         mav.addObject("message","Number of Inconsistencies: " + checkConsistency(results));
         return mav;
+    }
+
+    @GetMapping("/owners/ReadConsistencyCheck")
+    public ModelAndView getReadInconsistencies(){
+        Collection<Owner> results = this.owners.findByLastName("");
+
+        ModelAndView mav = new ModelAndView("owners/checkConsistency");
+        mav.addObject("message","Number of Read Inconsistencies: " + readByLastNameInconsistency("", results));
+        return mav;
+    }
+
+    public int readByLastNameInconsistency(String lastname, Collection<Owner> results){
+        if(OwnerToggles.newDB && OwnerToggles.oldDB && OwnerToggles.forklifted) {
+            int count = 0;
+            Iterator<Owner> actualSet = this.newOwners.findByLastName(lastname).iterator();
+            for (Owner expected : results) {
+                totalReads++;//number of owners == number of reads
+                if(!actualSet.hasNext()){
+                    readInconsistencies++;
+                    System.out.println("MIGRATION ERROR: " +
+                        "found: nothing \n" +
+                        "\nbut was supposed to be: \n" + expected.toString());
+                    this.newOwners.save(expected);
+                    continue;//check if more than one missing
+                }
+                Owner actual = actualSet.next();
+                if (!expected.equals(actual)) {
+                    readInconsistencies++;
+                    System.out.println("MIGRATION ERROR: " +
+                        "found: \n" + actual.toString() +
+                        "\nbut was supposed to be: \n" + expected.toString());
+                    this.newOwners.save(expected);
+                }
+
+                count++;
+            }
+            while(actualSet.hasNext()){//there is additional data from new request
+                readInconsistencies++;
+                totalReads++;
+                System.out.println("MIGRATION ERROR: " +
+                    "found: \n" + actualSet.next() +
+                    "\nbut was supposed to be: nothing");
+                //don't know what to do about this
+            }
+        }
+        return readInconsistencies;
+    }
+
+
+    @GetMapping("/owners/ReadConsistencyCheck/{ownerId}")
+    public ModelAndView getReadInconsistencies(@PathVariable("ownerId") final int ownerId){
+        Owner owner = this.owners.findById(ownerId);
+
+        ModelAndView mav = new ModelAndView("owners/checkConsistency");
+        mav.addObject("message","Number of Read Inconsistencies: " + readByIdInconsistency(ownerId, owner));
+        return mav;
+    }
+
+    public int readByIdInconsistency(int id, Owner expected){
+        totalReads++;
+        if(OwnerToggles.newDB && OwnerToggles.oldDB && OwnerToggles.forklifted) {
+            Owner actual = this.newOwners.findById(id);
+
+            if (!expected.equals(actual)) {
+                readInconsistencies++;
+                System.out.println("MIGRATION ERROR: " +
+                    "found: \n" + actual.toString() +
+                    "\nbut was supposed to be: \n" + expected.toString());
+                this.newOwners.save(expected);
+            }
+        }
+
+        return readInconsistencies;
     }
 
 }

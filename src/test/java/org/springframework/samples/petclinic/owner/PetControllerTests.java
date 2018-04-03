@@ -1,11 +1,17 @@
 package org.springframework.samples.petclinic.owner;
 
+import static org.hamcrest.Matchers.is;
+
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 
 import org.assertj.core.util.Lists;
 import org.junit.Before;
@@ -50,6 +56,11 @@ public class PetControllerTests {
 
     @MockBean
     private OwnerRepository owners;
+    
+    @MockBean 
+    private NewPetRepository newPets;
+    
+    private Pet doggo;
 
     @Before
     public void setup() {
@@ -125,5 +136,36 @@ public class PetControllerTests {
             .andExpect(status().isOk())
             .andExpect(view().name("pets/createOrUpdatePetForm"));
     }
+    
+    @Test
+    public void testCheckInconsistency() throws Exception{
+        PetToggles.forklifted = true;
+
+        given(newPets.findById(TEST_PET_ID)).willReturn(new Pet());
+        List<Pet> results = new ArrayList<>();
+        results.add(doggo);
+        given(pets.findById(doggo.getId())).willReturn((org.springframework.samples.petclinic.owner.Pet) results);
+
+        mockMvc.perform(get("/Pets/ConsistencyCheck"))
+            .andExpect(status().isOk())
+            .andExpect(model().attribute("message", is("Number of Inconsistencies: 1")));
+
+    }
+
+    @Test
+    public void testCheckConsistency() throws Exception{
+        PetToggles.forklifted = true;
+
+        given(newPets.findById(TEST_PET_ID)).willReturn(doggo);
+        List<Pet> results = new ArrayList<>();
+        results.add(doggo);
+        given(pets.findById(doggo.getId())).willReturn((org.springframework.samples.petclinic.owner.Pet) results);
+
+        mockMvc.perform(get("/Pets/ConsistencyCheck"))
+            .andExpect(status().isOk())
+            .andExpect(model().attribute("message", is("Number of Inconsistencies: 0")));
+    }
+
+    
 
 }

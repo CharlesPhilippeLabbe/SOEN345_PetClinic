@@ -22,11 +22,9 @@ import org.springframework.util.StringUtils;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.servlet.ModelAndView;
 
 import javax.validation.Valid;
 import java.util.Collection;
-import java.util.List;
 
 /**
  * @author Juergen Hoeller
@@ -40,17 +38,11 @@ class PetController {
     private static final String VIEWS_PETS_CREATE_OR_UPDATE_FORM = "pets/createOrUpdatePetForm";
     private final PetRepository pets;
     private final OwnerRepository owners;
-    @Autowired
-    private NewPetRepository newPets;
-    @Autowired
-    private NewOwnerRepository newOwners;
 
     @Autowired
     public PetController(PetRepository pets, OwnerRepository owners) {
         this.pets = pets;
         this.owners = owners;
-//        this.newPets = newPets;
-//        this.newOwners = newOwners;
     }
 
     @ModelAttribute("types")
@@ -87,10 +79,6 @@ class PetController {
             result.rejectValue("name", "duplicate", "already exists");
         }
         owner.addPet(pet);
-        
-        //get pet by petTypes
-//        Collection<Pet> results =  (Collection<Pet>) this.pets.findById(pet.getId());
-        
         if (result.hasErrors()) {
             model.put("pet", pet);
             return VIEWS_PETS_CREATE_OR_UPDATE_FORM;
@@ -120,51 +108,4 @@ class PetController {
         }
     }
 
-    private void forklift(Collection<Pet> results) {
-    	
-    	if(PetToggles.newDB && PetToggles.oldDB && !PetToggles.forklifted) {
-    		
-    		//finding pets by owner
-    		
-    		System.out.println(results.size());
-    		if(results.size() > 0) {
-    			
-    			for(Pet pet : results) {
-    				System.out.println("Lifting" + pet.getOwner());
-    				newPets.save(pet);
-    				
-    			}
-    			
-    			PetToggles.forklifted = true; //forklifting just one single time
-    		}
-    	}
-    }
-    
-    private int checkConsistency(Collection<Pet> results){
-        int count = 0;
-        if(PetToggles.newDB && PetToggles.oldDB && PetToggles.forklifted){
-            for(Pet pet : results){
-
-                Pet actual = newPets.findById(pet.getId());
-                if(!actual.equals(pet)){
-                    System.out.println("MIGRATION ERROR: " +
-                        "found: \n" + actual.toString() +
-                        "but was supposed to be: \n" + pet.toString());
-                        count++;
-                    }
-                }
-        }
-        return count;
-    }
-    
-    @GetMapping("/pets/ConsistencyCheck")
-    public ModelAndView getConsistencyCheck(){
-        List<PetType> results = this.pets.findPetTypes(); // should work @return the {@link Pet} if found
-        ModelAndView mav = new ModelAndView("pets/checkConsistency");
-        mav.addObject("message","Number of Inconsistencies: " + checkConsistency(results));
-        return mav;
-    }
-
 }
-
-

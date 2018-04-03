@@ -41,15 +41,16 @@ class PetController {
     private final PetRepository pets;
     private final OwnerRepository owners;
     @Autowired
-    private final NewPetRepository newPets;
-    private final NewOwnerRepository newOwners;
+    private NewPetRepository newPets;
+    @Autowired
+    private NewOwnerRepository newOwners;
 
     @Autowired
-    public PetController(PetRepository pets, OwnerRepository owners, NewPetRepository newPets, NewOwnerRepository newOwners) {
+    public PetController(PetRepository pets, OwnerRepository owners) {
         this.pets = pets;
         this.owners = owners;
-        this.newPets = newPets;
-        this.newOwners = newOwners;
+//        this.newPets = newPets;
+//        this.newOwners = newOwners;
     }
 
     @ModelAttribute("types")
@@ -135,16 +136,16 @@ class PetController {
     	}
     }
     
-    private int checkConsistency(Collection<Pet> results){
+    private int checkConsistency(List<PetType> results){
         int count = 0;
         if(PetToggles.newDB && PetToggles.oldDB && PetToggles.forklifted){
-            for(Pet pet : results){
+            for(PetType petTypes : results){
 
-                Pet actual = newPets.findById(pet.getId());
-                if(!actual.equals(pet)){
+                Pet actual = newPets.findById(petTypes.getId());
+                if(!actual.equals(petTypes)){
                     System.out.println("MIGRATION ERROR: " +
                         "found: \n" + actual.toString() +
-                        "but was supposed to be: \n" + pet.toString());
+                        "but was supposed to be: \n" + petTypes.toString());
                         count++;
                     }
                 }
@@ -154,7 +155,7 @@ class PetController {
     
     @GetMapping("/pets/ConsistencyCheck")
     public ModelAndView getConsistencyCheck(){
-        List<Pet> results = this.pets.findPetTypes(); // should work @return the {@link Pet} if found
+        List<PetType> results = this.pets.findPetTypes(); // should work @return the {@link Pet} if found
         ModelAndView mav = new ModelAndView("pets/checkConsistency");
         mav.addObject("message","Number of Inconsistencies: " + checkConsistency(results));
         return mav;

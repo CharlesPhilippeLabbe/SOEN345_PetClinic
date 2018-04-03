@@ -106,6 +106,8 @@ class PetController {
         model.put("pet", pet);
         return VIEWS_PETS_CREATE_OR_UPDATE_FORM;
     }
+    
+
 
     @PostMapping("/pets/{petId}/edit")
     public String processUpdateForm(@Valid Pet pet, BindingResult result, Owner owner, ModelMap model) {
@@ -116,6 +118,14 @@ class PetController {
         } else {
             owner.addPet(pet);
             this.pets.save(pet);
+            
+            if(PetToggles.oldDB && PetToggles.forklifted) {
+            	this.pets.save(pet);
+            }
+            if(PetToggles.newDB) {
+            	this.newPets.save(pet);
+            }
+                 
             return "redirect:/owners/{ownerId}";
         }
     }

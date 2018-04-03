@@ -12,3 +12,4 @@ target/*
 !.vscode/launch.json
 !.vscode/extensions.json
 _site/
+src/main/java/org/springframework/samples/petclinic/owner/NewOwnerRepository.java

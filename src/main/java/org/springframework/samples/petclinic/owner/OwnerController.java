@@ -68,11 +68,24 @@ class OwnerController {
 
     @PostMapping("/owners/new")
     public String processCreationForm(@Valid Owner owner, BindingResult result) {
-        if (result.hasErrors()) {
+        if (result.hasErrors()) 
+        {
             return VIEWS_OWNER_CREATE_OR_UPDATE_FORM;
-        } else {
-            this.owners.save(owner);
-            return "redirect:/owners/" + owner.getId();
+        } 
+        
+        else 
+        {
+	        	if (OwnerToggles.newDB) 
+	        	{
+	        		this.newOwners.save(owner);
+	        	}
+	        	
+	        	if (OwnerToggles.oldDB && OwnerToggles.forklifted) 
+	        	{
+	            this.owners.save(owner);
+	        	}
+            
+	        	return "redirect:/owners/" + owner.getId();
         }
     }
 

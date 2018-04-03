@@ -159,8 +159,7 @@ public class Owner extends Person {
             owner.getLastName().equals(this.getLastName()) &&
             owner.getAddress().equals(this.getAddress()) &&
             owner.getCity().equals(this.getCity())&&
-            owner.getTelephone().equals(this.getTelephone() )&&
-            owner.getPets().equals(this.getPets())){
+            owner.getTelephone().equals(this.getTelephone() )){
             return true;
         }
 

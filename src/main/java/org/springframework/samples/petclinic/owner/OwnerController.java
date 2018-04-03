@@ -178,9 +178,10 @@ class OwnerController {
                 if(!actual.equals(owner)){
                     System.out.println("MIGRATION ERROR: " +
                         "found: \n" + actual.toString() +
-                        "but was supposed to be: \n" + owner.toString());
+                        "\nbut was supposed to be: \n" + owner.toString());
                         count++;
                     }
+                    System.out.println(count);
                 }
         }
         return count;

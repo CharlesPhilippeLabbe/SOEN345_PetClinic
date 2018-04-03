@@ -24,20 +24,10 @@ public class CustomOwnerRepositoryImpl implements CustomOwnerRepository{
     @Transactional
     @Override
     public Collection<Owner> findByLastName(String lastName) {
-        Query query = entityManager.createNativeQuery("SELECT DISTINCT id FROM new_owners WHERE last_name LIKE ?", Owner.class);
+        Query query = entityManager.createNativeQuery("SELECT DISTINCT id FROM new_owners LEFT JOIN pets using (id) WHERE last_name LIKE ?", Owner.class);
         query.setParameter(1, lastName);
 
         Collection<Owner> owners = query.getResultList();
-
-        for(Owner owner: owners){
-            query = entityManager.createNativeQuery("SELECT * FROM new_pets WHERE owner = ?", Pet.class);
-            query.setParameter(1, owner.getId());
-            List<Pet> pets = query.getResultList();
-            for(Pet pet : pets){
-                owner.addPet(pet);
-                System.out.println(pet.getName());
-            }
-        }
         return owners;
     }
 
@@ -49,17 +39,9 @@ public class CustomOwnerRepositoryImpl implements CustomOwnerRepository{
     @Transactional
     @Override
     public Owner findById(Integer id) {
-        Query query = entityManager.createNativeQuery("SELECT *  FROM new_owners  WHERE id = :id", Owner.class);
+        Query query = entityManager.createNativeQuery("SELECT *  FROM new_owners LEFT JOIN pets using (id) WHERE id = :id", Owner.class);
         query.setParameter("id", id);
         Owner owner = (Owner)query.getSingleResult();
-
-        query = entityManager.createNativeQuery("SELECT * FROM new_pets WHERE owner = ?", Pet.class);
-        query.setParameter(1, id);
-        List<Pet> pets = query.getResultList();
-        for(Pet pet : pets){
-            owner.addPet(pet);
-            System.out.println(pet.getName());
-        }
         return owner;
     }
 

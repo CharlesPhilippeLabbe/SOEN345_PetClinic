@@ -29,6 +29,8 @@ import org.springframework.web.servlet.ModelAndView;
 
 import javax.validation.Valid;
 import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
@@ -43,6 +45,7 @@ class OwnerController {
 
     private static final String VIEWS_OWNER_CREATE_OR_UPDATE_FORM = "owners/createOrUpdateOwnerForm";
     private final OwnerRepository owners;
+    private static int readInconsistencies = 0;
     @Autowired
     private NewOwnerRepository newOwners;
 
@@ -68,23 +71,23 @@ class OwnerController {
 
     @PostMapping("/owners/new")
     public String processCreationForm(@Valid Owner owner, BindingResult result) {
-        if (result.hasErrors()) 
+        if (result.hasErrors())
         {
             return VIEWS_OWNER_CREATE_OR_UPDATE_FORM;
-        } 
-        
-        else 
+        }
+
+        else
         {
-	        	if (OwnerToggles.newDB) 
+	        	if (OwnerToggles.newDB)
 	        	{
 	        		this.newOwners.save(owner);
 	        	}
-	        	
-	        	if (OwnerToggles.oldDB && OwnerToggles.forklifted) 
+
+	        	if (OwnerToggles.oldDB && OwnerToggles.forklifted)
 	        	{
 	            this.owners.save(owner);
 	        	}
-            
+
 	        	return "redirect:/owners/" + owner.getId();
         }
     }
@@ -103,8 +106,20 @@ class OwnerController {
             owner.setLastName(""); // empty string signifies broadest possible search
         }
 
+        Collection<Owner> results;
+
         // find owners by last name
-        Collection<Owner> results = this.owners.findByLastName(owner.getLastName());
+        if(OwnerToggles.oldDB){
+            results = this.owners.findByLastName(owner.getLastName());
+
+            if(OwnerToggles.newDB && OwnerToggles.forklifted){
+                final String L = owner.getLastName();
+                CompletableFuture.supplyAsync(()-> readByLastNameInconsistency(L, results));
+            }
+
+        }else{//only old db setup
+            results = this.newOwners.findByLastName(owner.getLastName());
+        }
 
         if(owner.getLastName() == ""){
             //triggering forklift
@@ -207,6 +222,25 @@ class OwnerController {
         ModelAndView mav = new ModelAndView("owners/checkConsistency");
         mav.addObject("message","Number of Inconsistencies: " + checkConsistency(results));
         return mav;
+    }
+
+    public int readByLastNameInconsistency(String lastname, Collection<Owner> results){
+
+        int count = 0;
+        Owner[] actual = (Owner[]) this.newOwners.findByLastName(lastname).toArray();
+        for(Owner expected : results){
+            if(!expected.equals(actual[count])){
+                readInconsistencies++;
+                System.out.println("MIGRATION ERROR: " +
+                    "found: \n" + actual[count].toString() +
+                    "\nbut was supposed to be: \n" + expected.toString());
+                count++;
+                this.newOwners.save(expected);
+            }
+
+            count++;
+        }
+        return readInconsistencies;
     }
 
 }

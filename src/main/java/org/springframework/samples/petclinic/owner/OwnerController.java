@@ -43,6 +43,7 @@ class OwnerController {
     private static final String VIEWS_OWNER_CREATE_OR_UPDATE_FORM = "owners/createOrUpdateOwnerForm";
     private final OwnerRepository owners;
     private static int readInconsistencies = 0;
+    private static int totalReads = 1;//set to one, for ratio's sake
     @Autowired
     private NewOwnerRepository newOwners;
 
@@ -52,6 +53,26 @@ class OwnerController {
     public OwnerController(OwnerRepository clinicService) {
         this.owners = clinicService;
         //this.newOwners = newClinicService;
+
+        CompletableFuture.supplyAsync(() ->{
+
+            //wait until those conditions are met
+            while(totalReads < 100 && ((double)readInconsistencies/totalReads) < 0.05){
+                try{
+                    Thread.sleep(1000);
+                    if(totalReads >0){
+                        System.out.println("#################################################################");
+                        System.out.println("Total Reads: " + totalReads);
+                        System.out.println("Miss ratio: " + (readInconsistencies/totalReads));
+                    }
+                }catch(InterruptedException e){
+                }
+            }
+            System.out.println("D a t a b a s e   s w a p p e d !!!!");
+            //once the conditions are met swap databases
+            OwnerToggles.oldDB = false;
+            return true;
+        });
     }
 
     @InitBinder
@@ -240,7 +261,6 @@ class OwnerController {
 
                 Owner actual = newOwners.findById(owner.getId());
                 if(!actual.equals(owner)){
-
                     System.out.println("MIGRATION ERROR: " +
                         "found: \n" + actual.toString() +
                         "\nbut was supposed to be: \n" + owner.toString());
@@ -274,6 +294,7 @@ class OwnerController {
             int count = 0;
             Iterator<Owner> actualSet = this.newOwners.findByLastName(lastname).iterator();
             for (Owner expected : results) {
+                totalReads++;//number of owners == number of reads
                 if(!actualSet.hasNext()){
                     readInconsistencies++;
                     System.out.println("MIGRATION ERROR: " +
@@ -295,6 +316,7 @@ class OwnerController {
             }
             while(actualSet.hasNext()){//there is additional data from new request
                 readInconsistencies++;
+                totalReads++;
                 System.out.println("MIGRATION ERROR: " +
                     "found: \n" + actualSet.next() +
                     "\nbut was supposed to be: nothing");
@@ -315,6 +337,7 @@ class OwnerController {
     }
 
     public int readByIdInconsistency(int id, Owner expected){
+        totalReads++;
         if(OwnerToggles.newDB && OwnerToggles.oldDB && OwnerToggles.forklifted) {
             Owner actual = this.newOwners.findById(id);
 

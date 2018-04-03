@@ -58,6 +58,10 @@ public class OwnerControllerTests {
         george.setCity("Madison");
         george.setTelephone("6085551023");
         given(this.owners.findById(TEST_OWNER_ID)).willReturn(george);
+
+        OwnerToggles.newDB = true;
+        OwnerToggles.oldDB = true;
+        OwnerToggles.forklifted = true;
     }
 
     @Test

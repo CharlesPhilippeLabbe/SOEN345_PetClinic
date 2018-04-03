@@ -176,11 +176,13 @@ class OwnerController {
 
                 Owner actual = newOwners.findById(owner.getId());
                 if(!actual.equals(owner)){
+
                     System.out.println("MIGRATION ERROR: " +
                         "found: \n" + actual.toString() +
-                        "but was supposed to be: \n" + owner.toString());
+                        "\nbut was supposed to be: \n" + owner.toString());
                         count++;
                     }
+                    newOwners.save(owner);
                 }
         }
         return count;

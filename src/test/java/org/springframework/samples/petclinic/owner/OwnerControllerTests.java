@@ -62,6 +62,8 @@ public class OwnerControllerTests {
         OwnerToggles.newDB = true;
         OwnerToggles.oldDB = true;
         OwnerToggles.forklifted = true;
+        OwnerToggles.hashChecker = false;
+
     }
 
     @Test

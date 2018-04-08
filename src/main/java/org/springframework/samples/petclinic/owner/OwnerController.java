@@ -17,6 +17,7 @@ package org.springframework.samples.petclinic.owner;
 
 import org.springframework.beans.factory.annotation.Autowired;
 
+import org.springframework.samples.petclinic.model.ViolationRepositoryImpl;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -46,6 +47,7 @@ class OwnerController {
     private static int totalReads = 1;//set to one, for ratio's sake
     @Autowired
     private NewOwnerRepository newOwners;
+    private OwnerHashChecker hashChecker = new OwnerHashChecker(new ViolationRepositoryImpl());
 
 
 
@@ -73,6 +75,10 @@ class OwnerController {
             System.out.println("D a t a b a s e   s w a p p e d !!!!");
             //once the conditions are met swap databases
             OwnerToggles.oldDB = false;
+            //switch hash checker on
+            OwnerToggles.hashChecker = true;
+            this.hashChecker.initiateAsync(this.newOwners);
+
             return true;
         });
     }
@@ -98,14 +104,14 @@ class OwnerController {
 
         else
         {
-	        	if (OwnerToggles.newDB)
-	        	{
+	        	if (OwnerToggles.newDB){
 	        		this.newOwners.save(owner);
 	        	}
 
-	        	if (OwnerToggles.oldDB && OwnerToggles.forklifted)
-	        	{
-	            this.owners.save(owner);
+	        	if (OwnerToggles.oldDB && OwnerToggles.forklifted) {
+	                this.owners.save(owner);
+	                //saving every new owners in new database
+                    this.hashChecker.update(owner);
 	        	}
 
 	        	return "redirect:/owners/" + owner.getId();
@@ -132,14 +138,17 @@ class OwnerController {
         if(OwnerToggles.oldDB){
             results = this.owners.findByLastName(owner.getLastName());
 
-            //Read inconsistency checker
-            if(OwnerToggles.newDB && OwnerToggles.forklifted){
-                final String L = owner.getLastName();
-                CompletableFuture.supplyAsync(()-> readByLastNameInconsistency(L, results));
-            }
-
-        }else{//only old db setup
+        }else{//only new db setup
             results = this.newOwners.findByLastName(owner.getLastName());
+            //no hash checks for whole set of owners because it is handled by the initAsync() once db is swapped
+        }
+
+        //Read inconsistency checker
+        if( OwnerToggles.forklifted){
+            final String L = owner.getLastName();
+            //will check with hash or old/new db
+            //hash check will check only if the results.size() == 1, the rest is handled by async checker
+            CompletableFuture.supplyAsync(()-> readByLastNameInconsistency(L, results));
         }
 
 
@@ -164,14 +173,13 @@ class OwnerController {
         if(OwnerToggles.oldDB){
             owner = this.owners.findById(ownerId);
 
-            if(OwnerToggles.newDB && OwnerToggles.forklifted){
-                CompletableFuture.supplyAsync(() -> readByIdInconsistency(ownerId, owner));
-            }
-
         }else{
             owner = this.newOwners.findById(ownerId);
         }
-        //Read inconsistency checker
+        //Read inconsistency checker hash or old/new db
+        if(OwnerToggles.forklifted){
+            CompletableFuture.supplyAsync(() -> readByIdInconsistency(ownerId, owner));
+        }
         model.addAttribute(owner);
         return VIEWS_OWNER_CREATE_OR_UPDATE_FORM;
     }
@@ -214,13 +222,12 @@ class OwnerController {
 
         if(OwnerToggles.oldDB){
             owner = this.owners.findById(ownerId);
-
-            if(OwnerToggles.newDB && OwnerToggles.forklifted){
-                CompletableFuture.supplyAsync(() -> readByIdInconsistency(ownerId, owner));
-            }
-
         }else{
             owner = this.newOwners.findById(ownerId);
+        }
+        //will check hash or new/old db
+        if(OwnerToggles.forklifted){
+            CompletableFuture.supplyAsync(() -> readByIdInconsistency(ownerId, owner));
         }
 
         mav.addObject(owner);
@@ -237,6 +244,12 @@ class OwnerController {
                     Owner owner = results.next();
                     System.out.println("Lifting: " + owner.getLastName());
                     newOwners.save(owner);
+                    //populating hashchecker only if checker is not in use
+                    //should never occur that the checker is active at the same time as the forklift
+                    if(!OwnerToggles.hashChecker){
+                        this.hashChecker.update(owner);
+                    }
+
                     try {
                         Thread.sleep(500);
                     } catch (InterruptedException e) {
@@ -264,7 +277,10 @@ class OwnerController {
                     }
                     newOwners.save(owner);
                 }
+        }else if(OwnerToggles.newDB && OwnerToggles.hashChecker){
+            count = hashChecker.check(results);
         }
+
         return count;
     }
 
@@ -319,6 +335,9 @@ class OwnerController {
                 //don't know what to do about this
             }
         }
+        if(OwnerToggles.hashChecker && results.size()==1 && hashChecker.check(results.iterator().next())){//single owner check, multiple owners is handled by initAsync()
+            readInconsistencies++;
+        }
         return readInconsistencies;
     }
 
@@ -344,6 +363,10 @@ class OwnerController {
                     "\nbut was supposed to be: \n" + expected.toString());
                 this.newOwners.save(expected);
             }
+        }
+
+        if(OwnerToggles.hashChecker && hashChecker.check(expected)){//hash toggled, and inconsistency found
+            readInconsistencies++;
         }
 
         return readInconsistencies;

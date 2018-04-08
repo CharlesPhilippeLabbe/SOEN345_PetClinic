@@ -62,6 +62,17 @@ public class OwnerHashChecker implements HashConsistencyChecker<Owner> {
         return true;
     }
 
+    @Override
+    public int check(Collection<Owner> owners){
+
+        for(Owner owner : owners){
+            check(owner);//checking each owner in list
+        }
+
+        return this.inconsistencies;
+    }
+
+
     protected String getChecksum(Owner ob1){
         md.reset();//making sure the md is empty beforehand
         md.update(ob1.getBytes());

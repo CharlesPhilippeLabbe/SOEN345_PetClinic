@@ -5,6 +5,9 @@ import org.junit.Test;
 import org.mockito.Mock;
 import org.springframework.samples.petclinic.model.ViolationRepository;
 
+import java.util.ArrayList;
+import java.util.Collection;
+
 import static org.junit.Assert.*;
 
 public class OwnerHashCheckerTest {
@@ -47,5 +50,18 @@ public class OwnerHashCheckerTest {
         assertEquals(1.0/3, checker.getInconsistencyRatio(), 0.001);
     }
 
+    @Test
+    public void checkByLastName(){
+        Collection<Owner> results = new ArrayList<>();
+        results.add(george);
+        checker.update(george);
+        assertEquals(0, checker.check("Franklin", results));
+        assertEquals(0, checker.check("franklin", results));
+
+        george.setFirstName("Paul");
+        checker.update(george);
+
+        assertEquals(1, checker.check("Franklin", results));
+    }
 
 }

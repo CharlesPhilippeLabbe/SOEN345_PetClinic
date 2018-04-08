@@ -17,6 +17,7 @@ package org.springframework.samples.petclinic.owner;
 
 import org.springframework.beans.factory.annotation.Autowired;
 
+import org.springframework.samples.petclinic.model.ConsistencyChecker;
 import org.springframework.samples.petclinic.model.ViolationRepositoryImpl;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -45,16 +46,17 @@ class OwnerController {
     private final OwnerRepository owners;
     private static int readInconsistencies = 0;
     private static int totalReads = 1;//set to one, for ratio's sake
-    @Autowired
     private NewOwnerRepository newOwners;
-    private OwnerHashChecker hashChecker = new OwnerHashChecker(new ViolationRepositoryImpl());
+
+    private ConsistencyChecker<Owner> checker;
 
 
 
     @Autowired
-    public OwnerController(OwnerRepository clinicService) {
+    public OwnerController(OwnerRepository clinicService, NewOwnerRepository newOwners) {
         this.owners = clinicService;
-        //this.newOwners = newClinicService;
+        this.newOwners = newOwners;
+         checker = new OwnerDatabaseChecker(newOwners);
 
         CompletableFuture.supplyAsync(() ->{
 
@@ -77,7 +79,7 @@ class OwnerController {
             OwnerToggles.oldDB = false;
             //switch hash checker on
             OwnerToggles.hashChecker = true;
-            this.hashChecker.initiateAsync(this.newOwners);
+            this.checker = new OwnerHashChecker(newOwners, new ViolationRepositoryImpl(), true);
 
             return true;
         });
@@ -110,9 +112,11 @@ class OwnerController {
 
 	        	if (OwnerToggles.oldDB && OwnerToggles.forklifted) {
 	                this.owners.save(owner);
-	                //saving every new owners in new database
-                    this.hashChecker.update(owner);
 	        	}
+
+	        	//toggles are handledby the current instance of the checker
+                //saving every new owners in new database
+                this.checker.update(owner);
 
 	        	return "redirect:/owners/" + owner.getId();
         }
@@ -244,11 +248,6 @@ class OwnerController {
                     Owner owner = results.next();
                     System.out.println("Lifting: " + owner.getLastName());
                     newOwners.save(owner);
-                    //populating hashchecker only if checker is not in use
-                    //should never occur that the checker is active at the same time as the forklift
-                    if(!OwnerToggles.hashChecker){
-                        this.hashChecker.update(owner);
-                    }
 
                     try {
                         Thread.sleep(500);
@@ -264,24 +263,8 @@ class OwnerController {
 
 
     private int checkConsistency(Collection<Owner> results){
-        int count = 0;
-        if(OwnerToggles.newDB && OwnerToggles.oldDB && OwnerToggles.forklifted){
-            for(Owner owner : results){
 
-                Owner actual = newOwners.findById(owner.getId());
-                if(!actual.equals(owner)){
-                    System.out.println("MIGRATION ERROR: " +
-                        "found: \n" + actual.toString() +
-                        "\nbut was supposed to be: \n" + owner.toString());
-                        count++;
-                    }
-                    newOwners.save(owner);
-                }
-        }else if(OwnerToggles.newDB && OwnerToggles.hashChecker){
-            count = hashChecker.check(results);
-        }
-
-        return count;
+        return checker.check(results);
     }
 
     @GetMapping("/owners/ConsistencyCheck")
@@ -302,42 +285,9 @@ class OwnerController {
     }
 
     public int readByLastNameInconsistency(String lastname, Collection<Owner> results){
-        if(OwnerToggles.newDB && OwnerToggles.oldDB && OwnerToggles.forklifted) {
-            int count = 0;
-            Iterator<Owner> actualSet = this.newOwners.findByLastName(lastname).iterator();
-            for (Owner expected : results) {
-                totalReads++;//number of owners == number of reads
-                if(!actualSet.hasNext()){
-                    readInconsistencies++;
-                    System.out.println("MIGRATION ERROR: " +
-                        "found: nothing \n" +
-                        "\nbut was supposed to be: \n" + expected.toString());
-                    this.newOwners.save(expected);
-                    continue;//check if more than one missing
-                }
-                Owner actual = actualSet.next();
-                if (!expected.equals(actual)) {
-                    readInconsistencies++;
-                    System.out.println("MIGRATION ERROR: " +
-                        "found: \n" + actual.toString() +
-                        "\nbut was supposed to be: \n" + expected.toString());
-                    this.newOwners.save(expected);
-                }
 
-                count++;
-            }
-            while(actualSet.hasNext()){//there is additional data from new request
-                readInconsistencies++;
-                totalReads++;
-                System.out.println("MIGRATION ERROR: " +
-                    "found: \n" + actualSet.next() +
-                    "\nbut was supposed to be: nothing");
-                //don't know what to do about this
-            }
-        }
-        if(OwnerToggles.hashChecker && results.size()==1 && hashChecker.check(results.iterator().next())){//single owner check, multiple owners is handled by initAsync()
-            readInconsistencies++;
-        }
+        readInconsistencies += this.checker.check(lastname, results);
+
         return readInconsistencies;
     }
 
@@ -352,24 +302,10 @@ class OwnerController {
     }
 
     public int readByIdInconsistency(int id, Owner expected){
-        totalReads++;
-        if(OwnerToggles.newDB && OwnerToggles.oldDB && OwnerToggles.forklifted) {
-            Owner actual = this.newOwners.findById(id);
 
-            if (!expected.equals(actual)) {
-                readInconsistencies++;
-                System.out.println("MIGRATION ERROR: " +
-                    "found: \n" + actual.toString() +
-                    "\nbut was supposed to be: \n" + expected.toString());
-                this.newOwners.save(expected);
-            }
-        }
+        checker.check(id, expected);
 
-        if(OwnerToggles.hashChecker && hashChecker.check(expected)){//hash toggled, and inconsistency found
-            readInconsistencies++;
-        }
-
-        return readInconsistencies;
+        return checker.getReadInconsistencies();
     }
 
 }

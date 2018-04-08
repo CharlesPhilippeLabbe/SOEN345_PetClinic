@@ -1,10 +1,12 @@
 package org.springframework.samples.petclinic.owner;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.samples.petclinic.model.DatabaseChecker;
 
 import java.util.Collection;
 
 public class OwnerDatabaseChecker extends DatabaseChecker<Owner> {
+
 
     private NewOwnerRepository newOwners;
 
@@ -32,6 +34,7 @@ public class OwnerDatabaseChecker extends DatabaseChecker<Owner> {
         return this.check("", results);
     }
 
+    @Override
     public int check(String lastname, Collection<Owner> results){
         if(OwnerToggles.newDB && OwnerToggles.oldDB && OwnerToggles.forklifted) {
             return this.check(this.newOwners.findByLastName(lastname), results);
@@ -41,7 +44,9 @@ public class OwnerDatabaseChecker extends DatabaseChecker<Owner> {
 
     @Override
     public void update(Owner expected) {
-        this.newOwners.save(expected);
+        if(!OwnerToggles.testing){
+            this.newOwners.save(expected);
+        }
 
     }
 }

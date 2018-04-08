@@ -28,38 +28,73 @@ public class OwnerHashChecker extends HashConsistencyChecker<Owner> {
         super(violations);
     }
 
+    public OwnerHashChecker(NewOwnerRepository repository, ViolationRepository violations, boolean initAsync){
+        this(repository, violations);
+
+        if(initAsync){
+            //populating hash first
+            CompletableFuture.supplyAsync(this::populate)
+            .thenAccept(this::initiateAsync);
+        }
+    }
+
+    @Override
+    public int check(String lastname, Collection<Owner> owners){
+        int intial = this.getReadInconsistencies();
+
+        for(Owner owner: owners){
+            //ignores empty search with "", this is handled in the continuous checker
+            if (owner.getLastName().equals(lastname)){
+                this.check(owner.getId(), owner);//inconsistency found
+            }
+        }
+
+        return this.getReadInconsistencies() - intial;
+    }
+
+    private boolean populate(){
+
+        return true;
+    }
 
     public void setRepository(NewOwnerRepository repo){
         this.repository = repo;
     }
 
-    protected void initiateAsync(NewOwnerRepository repo){
+    protected void initiateAsync(NewOwnerRepository repo, boolean async){
         this.repository = repo;
-        this.initiateAsync();
+        this.initiateAsync(async);
     }
 
-    protected void initiateAsync(){
+    protected void initiateAsync(boolean async){
 
         if(this.repository == null){
             return;
         }
-        CompletableFuture.supplyAsync(()->{
-           while(OwnerToggles.hashChecker){
-               Collection<Owner> owners = repository.findByLastName("");//getting all the owners
+        if(async){
+            CompletableFuture.supplyAsync(this::continuousChecker);
+        }
+        else{
+            this.continuousChecker();
+        }
 
-               for(Owner owner: owners){
-                   this.check(owner);//checking every instances of owner in database for inconsistencies
-               }
+    }
 
-                try {
-                    Thread.sleep(10*60000);//wait 10 mins until next check
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-           }
-            return false;
-        });
+    private boolean continuousChecker(){
+        while(OwnerToggles.hashChecker){
+            Collection<Owner> owners = repository.findByLastName("");//getting all the owners
 
+            for(Owner owner: owners){
+                this.check(owner);//checking every instances of owner in database for inconsistencies
+            }
+
+            try {
+                Thread.sleep(10*60000);//wait 10 mins until next check
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        return false;
     }
 
 }

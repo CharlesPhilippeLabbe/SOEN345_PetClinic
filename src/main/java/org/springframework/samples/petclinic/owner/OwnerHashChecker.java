@@ -2,6 +2,7 @@ package org.springframework.samples.petclinic.owner;
 
 import org.apache.commons.lang3.SerializationUtils;
 import org.springframework.samples.petclinic.model.HashConsistencyChecker;
+import org.springframework.samples.petclinic.model.ViolationRepository;
 
 import javax.xml.bind.DatatypeConverter;
 import java.io.ByteArrayInputStream;
@@ -10,7 +11,9 @@ import java.io.ObjectInput;
 import java.io.ObjectInputStream;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.concurrent.CompletableFuture;
 
 public class OwnerHashChecker implements HashConsistencyChecker<Owner> {
 
@@ -18,8 +21,10 @@ public class OwnerHashChecker implements HashConsistencyChecker<Owner> {
     private MessageDigest md;
     private int inconsistencies = 0;
     private int checks = 0;
+    private ViolationRepository violations;
 
-    public OwnerHashChecker(){
+    public OwnerHashChecker(ViolationRepository violations){
+        this.violations = violations;
         try{
             md = MessageDigest.getInstance("MD5");
         }catch(NoSuchAlgorithmException e){
@@ -50,13 +55,14 @@ public class OwnerHashChecker implements HashConsistencyChecker<Owner> {
         if(!actualHash.equals(expectedHash)){
             System.out.println("HASH CONTENT Inconsistency found");
             this.inconsistencies++;
+            this.violations.add(expectedHash,actualHash);
             return false;
         }
 
         return true;
     }
 
-    private String getChecksum(Owner ob1){
+    protected String getChecksum(Owner ob1){
         md.reset();//making sure the md is empty beforehand
         md.update(ob1.getBytes());
 
@@ -64,5 +70,27 @@ public class OwnerHashChecker implements HashConsistencyChecker<Owner> {
         return DatatypeConverter.printHexBinary(digest).toUpperCase();
     }
 
+
+
+    protected void initiateAsync(NewOwnerRepository repository){
+
+        CompletableFuture.supplyAsync(()->{
+           while(OwnerToggles.hashChecker){
+               Collection<Owner> owners = repository.findByLastName("");//getting all the owners
+
+               for(Owner owner: owners){
+                   this.check(owner);//checking every instances of owner in database for inconsistencies
+               }
+
+                try {
+                    Thread.sleep(10*60000);//wait 10 mins until next check
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+           }
+            return false;
+        });
+
+    }
 
 }

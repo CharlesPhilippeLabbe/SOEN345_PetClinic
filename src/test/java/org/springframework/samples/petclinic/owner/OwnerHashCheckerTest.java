@@ -34,17 +34,17 @@ public class OwnerHashCheckerTest {
     public void check() {
         checker.update(george);
         assertTrue(checker.check(george));
-        assertEquals(0, checker.getInconsistencies());
+        assertEquals(0, checker.getReadInconsistencies());
 
         george.setLastName("franklin");
         assertFalse(checker.check(george));
-        assertEquals(1, checker.getInconsistencies());
+        assertEquals(1, checker.getReadInconsistencies());
         verify(violations).add(this.georgeHashed,checker.getChecksum(george));
 
         checker.update(george);
         checker.update(george);assertTrue(checker.check(george));
 
-        assertEquals(3, checker.getNumberOfChecks());
+        assertEquals(1.0/3, checker.getInconsistencyRatio(), 0.001);
     }
 
 

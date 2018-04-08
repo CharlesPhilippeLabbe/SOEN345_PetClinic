@@ -15,76 +15,34 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.concurrent.CompletableFuture;
 
-public class OwnerHashChecker implements HashConsistencyChecker<Owner> {
+public class OwnerHashChecker extends HashConsistencyChecker<Owner> {
 
-    private HashMap<Integer, String> checksum = new HashMap<>();
-    private MessageDigest md;
-    private int inconsistencies = 0;
-    private int checks = 0;
-    private ViolationRepository violations;
+    private NewOwnerRepository repository;
+
+    public OwnerHashChecker(NewOwnerRepository repository, ViolationRepository violations){
+        super(violations);
+        this.repository = repository;
+    }
 
     public OwnerHashChecker(ViolationRepository violations){
-        this.violations = violations;
-        try{
-            md = MessageDigest.getInstance("MD5");
-        }catch(NoSuchAlgorithmException e){
-            e.printStackTrace();
+        super(violations);
+    }
+
+
+    public void setRepository(NewOwnerRepository repo){
+        this.repository = repo;
+    }
+
+    protected void initiateAsync(NewOwnerRepository repo){
+        this.repository = repo;
+        this.initiateAsync();
+    }
+
+    protected void initiateAsync(){
+
+        if(this.repository == null){
+            return;
         }
-    }
-
-
-    public int getInconsistencies(){
-        return inconsistencies;
-    }
-
-    public int getNumberOfChecks(){
-        return checks;
-    }
-
-
-    @Override
-    public void update(Owner ob1) {
-        this.checksum.put(ob1.getId(), this.getChecksum(ob1));
-    }
-
-    @Override
-    public boolean check(Owner ob1) {
-        String actualHash = this.getChecksum(ob1);
-        String expectedHash = this.checksum.get(ob1.getId());
-        this.checks++;
-        if(!actualHash.equals(expectedHash)){
-            System.out.println("HASH CONTENT Inconsistency found");
-            this.inconsistencies++;
-            this.violations.add(expectedHash,actualHash);
-            return false;
-        }
-
-        return true;
-    }
-
-    @Override
-    public int check(Collection<Owner> owners){
-
-        for(Owner owner : owners){
-            check(owner);//checking each owner in list
-        }
-
-        return this.inconsistencies;
-    }
-
-
-    protected String getChecksum(Owner ob1){
-        md.reset();//making sure the md is empty beforehand
-        md.update(ob1.getBytes());
-
-        byte[] digest = md.digest();
-        return DatatypeConverter.printHexBinary(digest).toUpperCase();
-    }
-
-
-
-    protected void initiateAsync(NewOwnerRepository repository){
-
         CompletableFuture.supplyAsync(()->{
            while(OwnerToggles.hashChecker){
                Collection<Owner> owners = repository.findByLastName("");//getting all the owners

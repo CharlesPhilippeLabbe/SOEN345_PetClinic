@@ -39,9 +39,9 @@ class VetController {
     private final NewVetRepository newVets;
 
     @Autowired
-    public VetController(VetRepository clinicService, NewVetRepository clinicService) {
+    public VetController(VetRepository clinicService, NewVetRepository someclinicService) {
         this.vets = clinicService;
-        this.newVets = clinicService;
+        this.newVets = someclinicService;
     }
 
     @GetMapping("/vets.html")
@@ -49,8 +49,15 @@ class VetController {
         // Here we are returning an object of type 'Vets' rather than a collection of Vet
         // objects so it is simpler for Object-Xml mapping
     	
-    	//triggering forklift
-    	this.forklift();
+    	Collection<Vet> results = this.vets.findAll();
+    	if(vets.findAll() == null){
+    		//triggering forklift
+        	CompletableFuture.supplyAsync(() -> {
+        		forklift(results);
+        		return results;
+        	}).thenAccept(this::checkConsistency);
+    	}
+    	
     	
         Vets vets = new Vets();
         vets.getVetList().addAll(this.vets.findAll());
@@ -68,44 +75,41 @@ class VetController {
     }
     
     
-    public void forklift(){
+    public void forklift(Collection<Vet> results){
+    	
     	if(VetToggles.newDB && VetToggles.oldDB){
-    		CompletableFuture.supplyAsync(()->{
-    			
-    			Collection<Vet> results = vets.findAll();
-    			
+    		
+    			System.out.println(results.size());	
     			if(results.size() > 0){
     				for(Vet vet: results){    
     				System.out.println("Lifting " + vet.getLastName());
     				newVets.addNewVet(new NewVet(vet));
     				}
+    				VetToggles.forklifted = true;
     			}
    
-    			return true;
-    		});
     	}
     }
     
     
-//    private int checkConsistency(Collection<Vet> results){
-//        int count = 0;
-//        if(VetToggles.newDB && VetToggles.oldDB &VetToggles.forklifted){
-//            for(Vet vet : results){
-//            	
-//                System.out.println(vet.toString());
-//                Vet actual = newVets.findById(vets.getId());
-//                
-//                if(!actual.equals(vet)){
-//                    System.out.println("MIGRATION ERROR: " +
-//                        "found: \n" + actual.toString() +
-//                        "but was supposed to be: \n" + vet.toString());
-//                        count++;
-//                    }
-//                }
-//        }
-//        return count;
-//    }
-//    
+    private int checkConsistency(Collection<Vet> results){
+        if(VetToggles.newDB && VetToggles.oldDB &VetToggles.forklifted){
+
+            int count = 0;
+            for(Vet vet : results){
+            	
+                Vet actual = newVets.findById(vet.getId());
+                
+                if(!actual.equals(vet)){
+                    System.out.println("MIGRATION ERROR: " +
+                        "found: \n" + actual.toString() +
+                        "but was supposed to be: \n" + vet.toString());
+                        count++;
+                    }
+                }
+        }
+    }
+    
 //    @GetMapping("/vets/ConsistencyCheck")
 //    public ModelAndView getConsistencyCheck(){
 //        Collection<Vet> results = this.vets.findByLastName("");

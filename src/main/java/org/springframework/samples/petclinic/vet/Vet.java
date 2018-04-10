@@ -75,5 +75,22 @@ public class Vet extends Person {
     public void addSpecialty(Specialty specialty) {
         getSpecialtiesInternal().add(specialty);
     }
+    
+    @Override 
+    public boolean equals(Object obj){
+    	if(! (obj instanceof Vet)){
+    		return false;
+    	}
+    	
+    	Vet vet = (Vet) obj;
+    	if(vet.getId().equals(this.getId()) ||
+    		vet.getFirstName().equals(this.getFirstName()) ||
+    		vet.getLastName().equals(this.getLastName()) ||
+    		vet.getSpecialtiesInternal().equals(this.getSpecialtiesInternal())){
+    		return false;
+    	}
+    	return true;
+    
+    }
 
 }

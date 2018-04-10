@@ -13,5 +13,5 @@ public interface NewVetRepository extends Repository<NewVet, Integer>{
     
    Vet findById(@Param("id") Integer id);
 
-    void addNewVet(NewVet newVet);
+    void addNewVet(Vet vet);
 }

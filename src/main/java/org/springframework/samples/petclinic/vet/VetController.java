@@ -34,14 +34,15 @@ import javax.xml.ws.ResponseWrapper;
  */
 @Controller
 class VetController {
-
+	
+	private static final String VIEWS_VET_CREATE_OR_UPDATE_FORM = "vets/createOrUpdateOwnerForm";
     private final VetRepository vets;
     private final NewVetRepository newVets;
 
     @Autowired
-    public VetController(VetRepository clinicService, NewVetRepository someclinicService) {
+    public VetController(VetRepository clinicService, NewVetRepository newClinicService) {
         this.vets = clinicService;
-        this.newVets = someclinicService;
+        this.newVets = newClinicService;
     }
 
     @GetMapping("/vets.html")
@@ -74,16 +75,35 @@ class VetController {
         return vets;
     }
     
+    @PostMapping("vets/new")
+    public String processCreationForm(@Valid Vet vet, BindingResult result){
+    	if  (result.hasErrors()){
+    		return VIEWS_VET_CREATE_OR_UPDATE_FORM;
+    	} else{
+
+    		if(VetToggles.newDB){
+    			this.newVets.addNewVet(vet);
+    		}
+    		
+    		if(VetToggles.oldDB && VetToggles.forklifted){
+    			this.vets.addNewVet(vet);
+    		}
+    		
+    		return "redirect:/vets/" + vet.getId();
+    	}
+    	
+    }
+    
     
     public void forklift(Collection<Vet> results){
     	
     	if(VetToggles.newDB && VetToggles.oldDB){
     		
-    			System.out.println(results.size());	
+    			System.out.println(results.size());
     			if(results.size() > 0){
     				for(Vet vet: results){    
     				System.out.println("Lifting " + vet.getLastName());
-    				newVets.addNewVet(new NewVet(vet));
+    				newVets.addNewVet(new Vet(vet));
     				}
     				VetToggles.forklifted = true;
     			}
@@ -93,11 +113,12 @@ class VetController {
     
     
     private int checkConsistency(Collection<Vet> results){
-        if(VetToggles.newDB && VetToggles.oldDB &VetToggles.forklifted){
+    	   int count = 0;
+        if(VetToggles.newDB && VetToggles.oldDB && VetToggles.forklifted){
 
-            int count = 0;
             for(Vet vet : results){
             	
+            	System.out.println(vet.toString());
                 Vet actual = newVets.findById(vet.getId());
                 
                 if(!actual.equals(vet)){
@@ -110,13 +131,14 @@ class VetController {
         }
     }
     
-//    @GetMapping("/vets/ConsistencyCheck")
-//    public ModelAndView getConsistencyCheck(){
-//        Collection<Vet> results = this.vets.findByLastName("");
-//        ModelAndView modAndView = new ModelAndView("vets/checkConsistency");
-//        modAndView.addObject("message","Number of Inconsistencies: " + checkConsistency(results));
-//        return modAndView;
-//    }
+    @GetMapping("/vets/ConsistencyCheck")
+    public ModelAndView getConsistencyCheck(){
+    	
+        Collection<Vet> results = this.vets.findAll();
+        ModelAndView modAndView = new ModelAndView("vets/checkConsistency");
+        modAndView.addObject("message","Number of Inconsistencies: " + checkConsistency(results));
+        return modAndView;
+    }
 
 
 }

@@ -87,10 +87,10 @@ public class VetControllerTests<MockMvc> {
     
     // Testing Consistency Checks 
     @Test 
-    public void testCheckConsistency() throws Exception{
+    public void testCheckInConsistency() throws Exception{
     	VetToggles.forklifted = true; 
     	
-    	given(newVets.findById(TEST_VETS_ID)).willReturn(new Vet());
+    	given(newVets.findById(TEST_VET_ID)).willReturn(new Vet());
     	Collection<Vet> results = new ArrayList();
     	results.add(lauren);
     	given(this.vets.findAll().willReturn(results));
@@ -98,6 +98,21 @@ public class VetControllerTests<MockMvc> {
     	mockMvc.perform(get("/vets/ConsistencyChecker"))
     			.andExpect(status.isOK())
     			.andExpect(model().attribute("message", is("Number of Inconsistencies: 1")));
+    	
+    }
+    
+    @Test 
+    public void testCheckConsistency() throws Exception{
+    	VetToggles.forklifted = true; 
+    	
+    	given(newVets.findById(TEST_VET_ID)).willReturn(lauren);
+    	Collection<Vet> results = new ArrayList();
+    	results.add(lauren);
+    	given(this.vets.findAll().willReturn(results));
+    	
+    	mockMvc.perform(get("/vets/ConsistencyChecker"))
+    			.andExpect(status.isOK())
+    			.andExpect(model().attribute("message", is("Number of Inconsistencies: 0")));
     	
     }
 

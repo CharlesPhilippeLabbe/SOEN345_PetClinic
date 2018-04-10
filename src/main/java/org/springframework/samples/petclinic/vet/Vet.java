@@ -44,6 +44,15 @@ import org.springframework.samples.petclinic.model.Person;
 @Entity
 @Table(name = "vets")
 public class Vet extends Person {
+	
+	 public Vet(){
+	    	super();
+	    }
+	    
+	    public Vet(Vet vet){
+	    	this.specialties = vet.getSpecialtiesInternal();
+	    }
+
 
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(name = "vet_specialties", joinColumns = @JoinColumn(name = "vet_id"), inverseJoinColumns = @JoinColumn(name = "specialty_id"))
@@ -87,9 +96,9 @@ public class Vet extends Person {
     		vet.getFirstName().equals(this.getFirstName()) ||
     		vet.getLastName().equals(this.getLastName()) ||
     		vet.getSpecialtiesInternal().equals(this.getSpecialtiesInternal())){
-    		return false;
+    		return true;
     	}
-    	return true;
+    	return false;
     
     }
 

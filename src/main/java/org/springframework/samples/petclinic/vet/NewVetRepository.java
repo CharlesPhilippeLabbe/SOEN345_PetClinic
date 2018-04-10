@@ -1,12 +1,12 @@
 package org.springframework.samples.petclinic.vet;
 
 import org.springframework.dao.DataAccessException;
-
+import org.springframework.data.repository.Repository;
 import java.util.Collection;
 
-public interface NewVetRepository {
+public interface NewVetRepository extends Repository<NewVet, Integer>{
 
-    Collection<Vet> findAll() throws DataAccessException;
+    Collection<NewVet> findAll() throws DataAccessException;
 
-    void addNewVet(Vet vet);
+    void addNewVet(NewVet newVet);
 }

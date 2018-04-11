@@ -24,6 +24,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.ModelAndView;
 
 import javax.validation.Valid;
 import java.util.Collection;
@@ -122,7 +123,11 @@ class PetController {
             model.put("pet", pet);
             return VIEWS_PETS_CREATE_OR_UPDATE_FORM;
         } else {
-        	
+        		/**
+        		 * The following two if-statements are writing data to old and new datastore depending on the toggle values
+        		 * If both toggles (newDB and oldDB) are enabled then we are doing Shadow writes
+        		 * If only newDB toggle is enabled then we have successfully moved from oldDB to newDB
+        		 */
         		if(PetToggles.newDB) {
         			this.newPets.save(pet);
         		}
@@ -164,6 +169,9 @@ class PetController {
             owner.addPet(pet);
             this.pets.save(pet);
             
+            /**
+             * Shadow write for the pets
+             */
             if(PetToggles.oldDB && PetToggles.forklifted) {
             		this.pets.save(pet);
             }
@@ -175,7 +183,7 @@ class PetController {
         }
     }
     
-    public int readByLastNameInconsistency(String name, Collection<Pet> results){
+    public int readByNameInconsistency(String name, Collection<Pet> results){
         readInconsistencies += this.checker.check(name, results);
         return readInconsistencies;
     }
@@ -185,6 +193,40 @@ class PetController {
         return checker.getReadInconsistencies();
     }
     
+    private int checkConsistency(Collection<Pet> results){
+        return checker.check(results);
+    }
+    
+    @GetMapping("/pets/ConsistencyCheck")
+    public ModelAndView getConsistencyCheck(){
+        Collection<Pet> results = this.pets.findByName("");
+        ModelAndView mav = new ModelAndView("pets/checkConsistency");
+        mav.addObject("message","Number of Inconsistencies: " + checkConsistency(results));
+        return mav;
+    }
+
+    @GetMapping("/pets/ReadConsistencyCheck")
+    public ModelAndView getReadInconsistencies(){
+        Collection<Pet> results = this.pets.findByName("");
+
+        ModelAndView mav = new ModelAndView("pets/checkConsistency");
+        mav.addObject("message","Number of Read Inconsistencies: " + readByNameInconsistency("", results));
+        return mav;
+    }
+    
+    @GetMapping("/pets/ReadConsistencyCheck/{petId}")
+    public ModelAndView getReadInconsistencies(@PathVariable("petId") final int petId){
+        Pet pet = this.pets.findById(petId);
+
+        ModelAndView mav = new ModelAndView("pets/checkConsistency");
+        mav.addObject("message","Number of Read Inconsistencies: " + readByIdInconsistency(petId, pet));
+        return mav;
+    }
+    
+    /**
+     * This function is migrating the entire oldDB content to the newDB 
+     * It will do the mass migration only once
+     */
     private void forklift(){
 
         if(PetToggles.newDB && PetToggles.oldDB && !PetToggles.forklifted){

@@ -12,6 +12,9 @@ public class PetDatabaseChecker extends DatabaseChecker<Pet>{
 		this.newPets = newDB;
 	}
 
+	/**
+	 * Checking if the newDB has the same pet object as expected 
+	 */
 	@Override
 	public boolean check(int id, Pet expected) {
 		if(PetToggles.newDB && PetToggles.oldDB && PetToggles.forklifted) {
@@ -26,6 +29,9 @@ public class PetDatabaseChecker extends DatabaseChecker<Pet>{
 		return check(expected.getId(), expected);
 	}
 
+	/**
+	 * Checking if the entire collection of pet objects matches the expected collection
+	 */
 	@Override
 	public int check(String name, Collection<Pet> expected) {
 		if(PetToggles.newDB && PetToggles.oldDB && PetToggles.forklifted) {

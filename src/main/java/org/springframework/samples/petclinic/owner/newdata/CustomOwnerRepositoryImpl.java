@@ -1,14 +1,12 @@
 package org.springframework.samples.petclinic.owner.newdata;
 
 import org.springframework.samples.petclinic.owner.Owner;
-import org.springframework.samples.petclinic.owner.Pet;
 
 import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
 import javax.persistence.Query;
 import javax.transaction.Transactional;
 import java.util.Collection;
-import java.util.List;
 
 public class CustomOwnerRepositoryImpl implements CustomOwnerRepository{
 

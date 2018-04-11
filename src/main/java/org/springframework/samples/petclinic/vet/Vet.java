@@ -69,10 +69,7 @@ public class Vet extends Person {
         this.specialties = specialties;
     }
     
-    protected Set<Specialty> getPrivateSpecialty(){
-    	return this.specialties;
-    }
-
+    
     @XmlElement
     public List<Specialty> getSpecialties() {
         List<Specialty> sortedSpecs = new ArrayList<>(getSpecialtiesInternal());

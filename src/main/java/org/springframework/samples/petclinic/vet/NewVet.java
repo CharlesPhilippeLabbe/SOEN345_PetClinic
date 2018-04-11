@@ -41,9 +41,7 @@ public class NewVet extends Person {
         this.specialties = specialties;
     }
     
-    protected Set<Specialty> getPrivateSpecialty(){
-    	return this.specialties;
-    }
+   
 
     public List<Specialty> getSpecialties() {
         List<Specialty> sortedSpecs = new  ArrayList<>(getSpecialtiesInternal());

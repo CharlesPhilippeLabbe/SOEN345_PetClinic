@@ -52,6 +52,11 @@ public interface NewOwnerRepository extends  Repository<Owner, Integer>, CustomO
      */
 
     Owner findById(@Param("id") Integer id);
+    
+    /**
+     * Save an {@link Owner} to the data store, either inserting or updating it.
+     * @param owner the {@link Owner} to save
+     */
 
 
     void save(Owner owner);

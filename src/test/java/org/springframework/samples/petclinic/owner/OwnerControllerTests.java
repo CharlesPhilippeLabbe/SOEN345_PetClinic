@@ -62,6 +62,9 @@ public class OwnerControllerTests {
         OwnerToggles.newDB = true;
         OwnerToggles.oldDB = true;
         OwnerToggles.forklifted = true;
+        OwnerToggles.hashChecker = false;
+        OwnerToggles.testing = true;
+
     }
 
     @Test
@@ -213,6 +216,7 @@ public class OwnerControllerTests {
         given(newOwners.findById(TEST_OWNER_ID)).willReturn(george);
         Collection<Owner> results = new ArrayList<>();
         results.add(george);
+        given(newOwners.findByLastName("")).willReturn(results);
         given(owners.findByLastName("")).willReturn(results);
 
         mockMvc.perform(get("/owners/ConsistencyCheck"))
@@ -249,6 +253,7 @@ public class OwnerControllerTests {
         newResults.add(george);
         given(owners.findByLastName("")).willReturn(results);
         given(newOwners.findByLastName("")).willReturn(newResults);
+
 
 
         mockMvc.perform(get("/owners/ReadConsistencyCheck"))

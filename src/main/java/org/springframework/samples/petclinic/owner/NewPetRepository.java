@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
+import org.springframework.data.repository.query.Param;
 import org.springframework.samples.petclinic.owner.newdata.CustomPetRepository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,7 +33,7 @@ public interface NewPetRepository extends Repository<Pet, Integer>, CustomPetRep
      * @return the {@link Pet} if found
      */
 
-    Pet findById(Integer id);
+    Pet findById(@Param("id") Integer id);
 
     /**
      * Save a {@link Pet} to the data store, either inserting or updating it.

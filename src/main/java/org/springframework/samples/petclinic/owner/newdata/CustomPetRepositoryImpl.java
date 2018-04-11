@@ -7,6 +7,8 @@ import javax.persistence.EntityManager;
 import javax.persistence.PersistenceContext;
 import javax.persistence.Query;
 import javax.transaction.Transactional;
+
+import java.util.Collection;
 import java.util.List;
 
 public class CustomPetRepositoryImpl implements CustomPetRepository {
@@ -27,9 +29,9 @@ public class CustomPetRepositoryImpl implements CustomPetRepository {
     @Transactional
     @Override
     public Pet findById(Integer id) {
-        Query query = entityManager.createNativeQuery("SELECT * FROM new_pets WHERE id = ?");
-        query.setParameter(1, id);
-        return (Pet)query.getSingleResult();
+        Query query = entityManager.createNativeQuery("SELECT * FROM new_pets WHERE id = :id", Pet.class);
+        query.setParameter("id", id);
+        return (Pet) query.getSingleResult();
     }
 
     @Transactional
@@ -49,5 +51,12 @@ public class CustomPetRepositoryImpl implements CustomPetRepository {
 
     }
 
+    @Transactional
+	@Override
+	public Collection<Pet> findByName(String name) {
+		Query query = entityManager.createNativeQuery("SELECT * FROM new_pets WHERE name = :name", Pet.class);
+        query.setParameter("name", name);
+        return (Collection<Pet>) query.getResultList();
+	}
 
 }

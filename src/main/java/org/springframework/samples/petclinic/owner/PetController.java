@@ -16,6 +16,8 @@
 package org.springframework.samples.petclinic.owner;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.samples.petclinic.model.ConsistencyChecker;
+import org.springframework.samples.petclinic.model.ViolationRepositoryImpl;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.ModelMap;
 import org.springframework.util.StringUtils;
@@ -25,6 +27,8 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
 import java.util.Collection;
+import java.util.Iterator;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * @author Juergen Hoeller
@@ -38,11 +42,44 @@ class PetController {
     private static final String VIEWS_PETS_CREATE_OR_UPDATE_FORM = "pets/createOrUpdatePetForm";
     private final PetRepository pets;
     private final OwnerRepository owners;
+    private static int readInconsistencies = 0;
+    private static int totalReads = 1;
+    private NewPetRepository newPets;
+    
+    private ConsistencyChecker<Pet> checker;
 
     @Autowired
-    public PetController(PetRepository pets, OwnerRepository owners) {
+    public PetController(PetRepository pets, OwnerRepository owners, NewPetRepository newPets) {
         this.pets = pets;
         this.owners = owners;
+        this.newPets = newPets;
+        checker = new PetDatabaseChecker(newPets);
+        
+        CompletableFuture.supplyAsync(() ->{
+
+            forklift();
+
+            //wait until those conditions are met
+            while(totalReads < 100 && ((double)readInconsistencies/totalReads) < 0.01){
+                try{
+                    Thread.sleep(1000);
+                    if(totalReads >0){
+                        System.out.println("#################################################################");
+                        System.out.println("Total Reads: " + totalReads);
+                        System.out.println("Miss ratio: " + (readInconsistencies/totalReads));
+                    }
+                }catch(InterruptedException e){
+                }
+            }
+            System.out.println("D a t a b a s e   s w a p p e d !!!!");
+            //once the conditions are met swap databases
+            PetToggles.oldDB = false;
+            //switch hash checker on
+            PetToggles.hashChecker = true;
+            //this.checker = new PetHashChecker(newPets, new ViolationRepositoryImpl(), true);
+
+            return true;
+        });
     }
 
     @ModelAttribute("types")
@@ -105,6 +142,27 @@ class PetController {
             owner.addPet(pet);
             this.pets.save(pet);
             return "redirect:/owners/{ownerId}";
+        }
+    }
+    
+    private void forklift(){
+
+        if(PetToggles.newDB && PetToggles.oldDB && !PetToggles.forklifted){
+            Iterator<Pet> results = this.pets.findByName("").iterator();
+            // find pets by name
+                while(results.hasNext()){
+                    Pet pet = results.next();
+                    System.out.println("Lifting: " + pet.getName());
+                    newPets.save(pet);
+
+                    try {
+                        Thread.sleep(500);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+                PetToggles.forklifted = true;//forklifting only once
+
         }
     }
 

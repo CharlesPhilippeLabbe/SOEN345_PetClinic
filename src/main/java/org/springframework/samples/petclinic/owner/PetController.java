@@ -45,14 +45,16 @@ class PetController {
     private static int readInconsistencies = 0;
     private static int totalReads = 1;
     private NewPetRepository newPets;
+    private NewOwnerRepository newOwners;
     
     private ConsistencyChecker<Pet> checker;
 
     @Autowired
-    public PetController(PetRepository pets, OwnerRepository owners, NewPetRepository newPets) {
+    public PetController(PetRepository pets, OwnerRepository owners, NewPetRepository newPets, NewOwnerRepository newOwners) {
         this.pets = pets;
         this.owners = owners;
         this.newPets = newPets;
+        this.newOwners = newOwners;
         checker = new PetDatabaseChecker(newPets);
         
         CompletableFuture.supplyAsync(() ->{
@@ -76,7 +78,7 @@ class PetController {
             PetToggles.oldDB = false;
             //switch hash checker on
             PetToggles.hashChecker = true;
-            //this.checker = new PetHashChecker(newPets, new ViolationRepositoryImpl(), true);
+            this.checker = new PetHashChecker(newPets, newOwners, new ViolationRepositoryImpl(), true);
 
             return true;
         });
@@ -120,19 +122,37 @@ class PetController {
             model.put("pet", pet);
             return VIEWS_PETS_CREATE_OR_UPDATE_FORM;
         } else {
-            this.pets.save(pet);
+        	
+        		if(PetToggles.newDB) {
+        			this.newPets.save(pet);
+        		}
+        		
+        		if(PetToggles.oldDB) {
+        			this.pets.save(pet);
+        		}
+            
+        		this.checker.update(pet);
             return "redirect:/owners/{ownerId}";
         }
     }
 
     @GetMapping("/pets/{petId}/edit")
     public String initUpdateForm(@PathVariable("petId") int petId, ModelMap model) {
-        Pet pet = this.pets.findById(petId);
+        Pet pet;
+        
+        if(PetToggles.oldDB) {
+        		pet = this.pets.findById(petId);
+        } else {
+        		pet = this.newPets.findById(petId);
+        }
+        
+        if(PetToggles.forklifted){
+            CompletableFuture.supplyAsync(() -> readByIdInconsistency(petId, pet));
+        }
+        
         model.put("pet", pet);
         return VIEWS_PETS_CREATE_OR_UPDATE_FORM;
     }
-    
-
 
     @PostMapping("/pets/{petId}/edit")
     public String processUpdateForm(@Valid Pet pet, BindingResult result, Owner owner, ModelMap model) {
@@ -145,14 +165,24 @@ class PetController {
             this.pets.save(pet);
             
             if(PetToggles.oldDB && PetToggles.forklifted) {
-            	this.pets.save(pet);
+            		this.pets.save(pet);
             }
             if(PetToggles.newDB) {
-            	this.newPets.save(pet);
+            		this.newPets.save(pet);
             }
                  
             return "redirect:/owners/{ownerId}";
         }
+    }
+    
+    public int readByLastNameInconsistency(String name, Collection<Pet> results){
+        readInconsistencies += this.checker.check(name, results);
+        return readInconsistencies;
+    }
+    
+    public int readByIdInconsistency(int id, Pet expected){
+        checker.check(id, expected);
+        return checker.getReadInconsistencies();
     }
     
     private void forklift(){

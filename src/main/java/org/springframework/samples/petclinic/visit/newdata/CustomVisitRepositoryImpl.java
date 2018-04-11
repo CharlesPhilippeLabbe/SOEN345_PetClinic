@@ -1,5 +1,6 @@
 package org.springframework.samples.petclinic.visit.newdata;
 
+import java.util.Collection;
 import java.util.List;
 
 import javax.persistence.EntityManager;
@@ -37,5 +38,25 @@ public class CustomVisitRepositoryImpl implements CustomVisitRepository {
         List<Visit> visits = query.getResultList();
         System.out.println(visits.size());
         return visits;
+	}
+
+	@Transactional
+	@Override
+	public Collection<Visit> getAllVisits() {
+        Query query = entityManager.createNativeQuery("SELECT * FROM new_visits", Visit.class);
+
+        Collection<Visit> visits = query.getResultList();
+        System.out.println(visits.size());
+        return visits;
+	}
+
+	@Transactional
+	@Override
+	public Visit getVisit(Integer id) {
+        Query query = entityManager.createNativeQuery("SELECT * FROM new_visits WHERE id = :id", Visit.class);
+        query.setParameter("id", id);
+        
+        Visit visit = (Visit) query.getSingleResult();
+        return visit;
 	}
 }

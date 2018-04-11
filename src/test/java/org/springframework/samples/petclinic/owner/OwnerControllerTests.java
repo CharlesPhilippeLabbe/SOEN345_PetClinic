@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 
 import org.assertj.core.util.Lists;
 import org.junit.Before;
@@ -21,6 +22,9 @@ import org.springframework.samples.petclinic.owner.OwnerController;
 import org.springframework.samples.petclinic.owner.OwnerRepository;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.servlet.MockMvc;
+
+import java.util.ArrayList;
+import java.util.Collection;
 
 /**
  * Test class for {@link OwnerController}
@@ -39,6 +43,9 @@ public class OwnerControllerTests {
     @MockBean
     private OwnerRepository owners;
 
+    @MockBean
+    private NewOwnerRepository newOwners;
+
     private Owner george;
 
     @Before
@@ -51,6 +58,13 @@ public class OwnerControllerTests {
         george.setCity("Madison");
         george.setTelephone("6085551023");
         given(this.owners.findById(TEST_OWNER_ID)).willReturn(george);
+
+        OwnerToggles.newDB = true;
+        OwnerToggles.oldDB = true;
+        OwnerToggles.forklifted = true;
+        OwnerToggles.hashChecker = false;
+        OwnerToggles.testing = true;
+
     }
 
     @Test
@@ -174,6 +188,97 @@ public class OwnerControllerTests {
             .andExpect(model().attribute("owner", hasProperty("city", is("Madison"))))
             .andExpect(model().attribute("owner", hasProperty("telephone", is("6085551023"))))
             .andExpect(view().name("owners/ownerDetails"));
+    }
+
+    /**
+     * T e s t i n g  C o n s i s t e n c y  C h e c k s
+     */
+
+    @Test
+    public void testCheckInconsistency() throws Exception{
+        OwnerToggles.forklifted = true;
+
+        given(newOwners.findById(TEST_OWNER_ID)).willReturn(new Owner());
+        Collection<Owner> results = new ArrayList<>();
+        results.add(george);
+        given(owners.findByLastName("")).willReturn(results);
+
+        mockMvc.perform(get("/owners/ConsistencyCheck"))
+            .andExpect(status().isOk())
+            .andExpect(model().attribute("message", is("Number of Inconsistencies: 1")));
+
+    }
+
+    @Test
+    public void testCheckConsistency() throws Exception{
+        OwnerToggles.forklifted = true;
+
+        given(newOwners.findById(TEST_OWNER_ID)).willReturn(george);
+        Collection<Owner> results = new ArrayList<>();
+        results.add(george);
+        given(newOwners.findByLastName("")).willReturn(results);
+        given(owners.findByLastName("")).willReturn(results);
+
+        mockMvc.perform(get("/owners/ConsistencyCheck"))
+            .andExpect(status().isOk())
+            .andExpect(model().attribute("message", is("Number of Inconsistencies: 0")));
+    }
+
+    @Test
+    public void testReadByIdConsistencyCheck() throws Exception{
+        OwnerToggles.forklifted = true;
+
+        given(newOwners.findById(TEST_OWNER_ID)).willReturn(george);
+
+        given(owners.findById(TEST_OWNER_ID)).willReturn(george);
+        mockMvc.perform(get("/owners/ReadConsistencyCheck/"+ TEST_OWNER_ID))
+            .andExpect(status().isOk())
+            .andExpect(model().attribute("message", is("Number of Read Inconsistencies: 0")));
+
+        given(owners.findById(TEST_OWNER_ID)).willReturn(new Owner());
+        mockMvc.perform(get("/owners/ReadConsistencyCheck/"+ TEST_OWNER_ID))
+            .andExpect(status().isOk())
+            .andExpect(model().attribute("message", is("Number of Read Inconsistencies: 1")));
+
+
+    }
+
+    @Test
+    public void testReadByLastNameConsistencyCheck() throws Exception{
+        OwnerToggles.forklifted = true;
+
+        Collection<Owner> results = new ArrayList<>();
+        results.add(george);
+        Collection<Owner> newResults = new ArrayList<>();
+        newResults.add(george);
+        given(owners.findByLastName("")).willReturn(results);
+        given(newOwners.findByLastName("")).willReturn(newResults);
+
+
+
+        mockMvc.perform(get("/owners/ReadConsistencyCheck"))
+            .andExpect(status().isOk())
+            .andExpect(model().attribute("message", is("Number of Read Inconsistencies: 0")));
+
+        results.add(george);
+        george.setFirstName("george");
+
+        mockMvc.perform(get("/owners/ReadConsistencyCheck"))
+            .andExpect(status().isOk())
+            .andExpect(model().attribute("message", is("Number of Read Inconsistencies: 1")));
+
+        newResults.add(new Owner());
+
+        mockMvc.perform(get("/owners/ReadConsistencyCheck"))
+            .andExpect(status().isOk())
+            .andExpect(model().attribute("message", is("Number of Read Inconsistencies: 2")));
+
+        newResults.add(new Owner());
+
+        mockMvc.perform(get("/owners/ReadConsistencyCheck"))
+            .andExpect(status().isOk())
+            .andExpect(model().attribute("message", is("Number of Read Inconsistencies: 4")));
+
     }
 
 }

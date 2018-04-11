@@ -15,7 +15,7 @@
  */
 package org.springframework.samples.petclinic.model;
 
-import java.io.Serializable;
+import java.io.*;
 
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
@@ -35,6 +35,14 @@ public class BaseEntity implements Serializable {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
+    public BaseEntity(){
+
+    }
+
+    public BaseEntity(BaseEntity base){
+        this.id = base.getId();
+    }
+
     public Integer getId() {
         return id;
     }
@@ -45,6 +53,25 @@ public class BaseEntity implements Serializable {
 
     public boolean isNew() {
         return this.id == null;
+    }
+
+    public byte[] getBytes(){
+       ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        ObjectOutput out;
+        try{
+            out  = new ObjectOutputStream(bos);
+            out.writeObject(this);
+            out.flush();
+            byte[] bytes = bos.toByteArray();
+            bos.close();
+
+            return bytes;
+
+        }catch(IOException e){
+            e.printStackTrace();
+        }
+       return new byte[0];
+
     }
 
 }

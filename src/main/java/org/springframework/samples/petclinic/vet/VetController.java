@@ -19,8 +19,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
-
+import org.springframework.web.servlet.ModelAndView;
+import java.util.Collection;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+
+import javax.xml.ws.ResponseWrapper;
 
 /**
  * @author Juergen Hoeller
@@ -30,18 +34,33 @@ import java.util.Map;
  */
 @Controller
 class VetController {
-
+	
     private final VetRepository vets;
+    
+    @Autowired
+    private final NewVetRepository newVets;
 
     @Autowired
     public VetController(VetRepository clinicService) {
         this.vets = clinicService;
+//        this.newVets = newClinicService;
     }
 
     @GetMapping("/vets.html")
     public String showVetList(Map<String, Object> model) {
         // Here we are returning an object of type 'Vets' rather than a collection of Vet
         // objects so it is simpler for Object-Xml mapping
+    	
+    	Collection<Vet> results = this.vets.findAll();
+    	if(vets.findAll() == null){
+    		//triggering forklift
+        	CompletableFuture.supplyAsync(() -> {
+        		forklift(results);
+        		return results;
+        	}).thenAccept(this::checkConsistency);
+    	}
+    	
+    	
         Vets vets = new Vets();
         vets.getVetList().addAll(this.vets.findAll());
         model.put("vets", vets);
@@ -49,12 +68,78 @@ class VetController {
     }
 
     @GetMapping({ "/vets.json", "/vets.xml" })
-    public @ResponseBody Vets showResourcesVetList() {
+    public @ResponseWrapper Vets showResourcesVetList() {
         // Here we are returning an object of type 'Vets' rather than a collection of Vet
         // objects so it is simpler for JSon/Object mapping
         Vets vets = new Vets();
         vets.getVetList().addAll(this.vets.findAll());
         return vets;
     }
+    
+//    @PostMapping("vets/new")
+//    public String processCreationForm(@Valid Vet vet, BindingResult result){
+//    	if  (result.hasErrors()){
+//    		return VIEWS_VET_CREATE_OR_UPDATE_FORM;
+//    	} else{
+//
+//    		if(VetToggles.newDB){
+//    			this.newVets.addNewVet(vet);
+//    		}
+//    		
+//    		if(VetToggles.oldDB && VetToggles.forklifted){
+//    			this.vets.addNewVet(vet);
+//    		}
+//    		
+//    		return "redirect:/vets/" + vet.getId();
+//    	}
+//    	
+//    }
+    
+    
+    public void forklift(Collection<Vet> results){
+    	
+    	if(VetToggles.newDB && VetToggles.oldDB){
+    		
+    			System.out.println(results.size());
+    			if(results.size() > 0){
+    				for(Vet vet: results){    
+    				System.out.println("Lifting " + vet.getLastName());
+    				newVets.addNewVet(new Vet(vet));
+    				}
+    				VetToggles.forklifted = true;
+    			}
+   
+    	}
+    }
+    
+    
+    private int checkConsistency(Collection<Vet> results){
+    	   int count = 0;
+        if(VetToggles.newDB && VetToggles.oldDB && VetToggles.forklifted){
+
+            for(Vet vet : results){
+            	
+            	System.out.println(vet.toString());
+                Vet actual = newVets.findById(vet.getId());
+                
+                if(!actual.equals(vet)){
+                    System.out.println("MIGRATION ERROR: " +
+                        "found: \n" + actual.toString() +
+                        "but was supposed to be: \n" + vet.toString());
+                        count++;
+                    }
+                }
+        }
+    }
+    
+    @GetMapping("/vets/ConsistencyCheck")
+    public ModelAndView getConsistencyCheck(){
+    	
+        Collection<Vet> results = this.vets.findAll();
+        ModelAndView modAndView = new ModelAndView("vets/checkConsistency");
+        modAndView.addObject("message","Number of Inconsistencies: " + checkConsistency(results));
+        return modAndView;
+    }
+
 
 }

@@ -21,12 +21,12 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import javax.persistence.Entity;
-import javax.persistence.FetchType;
-import javax.persistence.JoinColumn;
-import javax.persistence.JoinTable;
-import javax.persistence.ManyToMany;
-import javax.persistence.Table;
+//import javax.persistence.Entity;
+//import javax.persistence.FetchType;
+//import javax.persistence.JoinColumn;
+//import javax.persistence.JoinTable;
+//import javax.persistence.ManyToMany;
+//import javax.persistence.Table;
 import javax.xml.bind.annotation.XmlElement;
 
 import org.springframework.beans.support.MutableSortDefinition;
@@ -44,6 +44,15 @@ import org.springframework.samples.petclinic.model.Person;
 @Entity
 @Table(name = "vets")
 public class Vet extends Person {
+	
+	 public Vet(){
+	    	super();
+	    }
+	    
+	    public Vet(Vet vet){
+	    	this.specialties = vet.getSpecialtiesInternal();
+	    }
+
 
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(name = "vet_specialties", joinColumns = @JoinColumn(name = "vet_id"), inverseJoinColumns = @JoinColumn(name = "specialty_id"))
@@ -58,6 +67,10 @@ public class Vet extends Person {
 
     protected void setSpecialtiesInternal(Set<Specialty> specialties) {
         this.specialties = specialties;
+    }
+    
+    protected Set<Specialty> getPrivateSpecialty(){
+    	return this.specialties;
     }
 
     @XmlElement
@@ -74,6 +87,24 @@ public class Vet extends Person {
 
     public void addSpecialty(Specialty specialty) {
         getSpecialtiesInternal().add(specialty);
+    }
+    
+    @Override 
+    public boolean equals(Object obj){
+    	if(! (obj instanceof Vet)){
+    		return false;
+    	}
+    	
+    	Vet vet = (Vet) obj;
+    	if(vet.getId().equals(this.getId()) &&
+    		vet.getFirstName().equals(this.getFirstName()) &&
+    		vet.getLastName().equals(this.getLastName()) &&
+    		vet.getSpecialtiesInternal().equals(this.getSpecialtiesInternal())){
+    		
+    		return true;
+    	}
+    	return false;
+    
     }
 
 }

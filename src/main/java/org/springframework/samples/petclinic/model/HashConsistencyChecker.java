@@ -1,6 +1,7 @@
 package org.springframework.samples.petclinic.model;
 import org.springframework.data.repository.Repository;
 import org.springframework.samples.petclinic.owner.Owner;
+import org.springframework.samples.petclinic.visit.Visit;
 
 import javax.xml.bind.DatatypeConverter;
 import java.security.MessageDigest;
@@ -68,10 +69,10 @@ public abstract class HashConsistencyChecker<T extends BaseEntity> implements Co
     }
 
     @Override
-    public int check(Collection<T> owners){
+    public int check(Collection<T> results){
 
-        for(T owner : owners){
-            check(owner);//checking each owner in list
+        for(T result : results){
+            check(result);//checking each object in list
         }
 
         return this.inconsistencies;
@@ -96,8 +97,6 @@ public abstract class HashConsistencyChecker<T extends BaseEntity> implements Co
         byte[] digest = md.digest();
         return DatatypeConverter.printHexBinary(digest).toUpperCase();
     }
-
-
 
     //void initiateAsync(Repository<?,?> repository);
 
